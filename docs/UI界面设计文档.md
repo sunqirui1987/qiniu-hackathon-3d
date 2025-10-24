@@ -1090,132 +1090,497 @@ defineExpose({
 })
 </script>
   
-  createUI() {
-    this.container.innerHTML = `
-      <div class="fullscreen-3d-viewer">
-        <!-- 顶部工具栏 -->
-        <div class="top-toolbar">
-          <div class="toolbar-left">
-            <button class="tool-btn" id="back-btn" title="返回主界面">
-              <i class="icon-arrow-left"></i>
+### 6.2 视角控制组件
+
+```vue
+<!-- ViewControls.vue -->
+<template>
+  <div class="view-controls">
+    <button 
+      v-for="view in viewTypes" 
+      :key="view.type"
+      class="view-btn" 
+      @click="$emit('view-change', view.type)"
+      :title="view.label"
+    >
+      {{ view.label }}
+    </button>
+  </div>
+</template>
+
+<script setup lang="ts">
+const emit = defineEmits<{
+  'view-change': [viewType: string]
+}>()
+
+const viewTypes = [
+  { type: 'front', label: '前' },
+  { type: 'back', label: '后' },
+  { type: 'left', label: '左' },
+  { type: 'right', label: '右' },
+  { type: 'top', label: '顶' },
+  { type: 'bottom', label: '底' },
+  { type: 'iso', label: '等轴' }
+]
+</script>
+```
+
+### 6.3 文件面板组件
+
+```vue
+<!-- FilePanel.vue -->
+<template>
+  <div class="side-panel file-panel" :class="{ collapsed }">
+    <div class="panel-header">
+      <h3>模型文件</h3>
+      <button class="collapse-btn" @click="toggleCollapse">
+        <i class="icon-chevron-left"></i>
+      </button>
+    </div>
+    <div class="panel-content" v-if="!collapsed">
+      <div class="file-tree">
+        <div 
+          v-for="file in files" 
+          :key="file.id"
+          class="file-item"
+          :class="{ active: file.active }"
+          @click="$emit('file-select', file.id)"
+        >
+          <i class="icon-cube"></i>
+          <span>{{ file.name }}</span>
+          <div class="file-actions">
+            <button class="action-btn" title="隐藏">
+              <i class="icon-eye-off"></i>
             </button>
-            <button class="tool-btn" id="open-btn" title="打开文件">
-              <i class="icon-folder-open"></i>
-            </button>
-            <button class="tool-btn" id="save-btn" title="保存">
-              <i class="icon-save"></i>
-            </button>
-          </div>
-          
-          <div class="toolbar-center">
-            <span class="file-name" id="file-name">未命名模型</span>
-          </div>
-          
-          <div class="toolbar-right">
-            <button class="tool-btn" id="fullscreen-btn" title="全屏">
-              <i class="icon-fullscreen"></i>
-            </button>
-            <button class="tool-btn" id="settings-btn" title="设置">
-              <i class="icon-settings"></i>
+            <button 
+              class="action-btn" 
+              title="删除"
+              @click.stop="$emit('file-delete', file.id)"
+            >
+              <i class="icon-trash"></i>
             </button>
           </div>
         </div>
-        
-        <!-- 3D渲染区域 -->
-        <div class="render-area">
-          <canvas id="babylon-canvas"></canvas>
-          
-          <!-- 视角控制器 -->
-          <div class="view-controls">
-            <button class="view-btn" data-view="front">前</button>
-            <button class="view-btn" data-view="back">后</button>
-            <button class="view-btn" data-view="left">左</button>
-            <button class="view-btn" data-view="right">右</button>
-            <button class="view-btn" data-view="top">顶</button>
-            <button class="view-btn" data-view="bottom">底</button>
-            <button class="view-btn" data-view="iso">等轴</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+interface FileItem {
+  id: string
+  name: string
+  active: boolean
+}
+
+interface Props {
+  collapsed: boolean
+  files: FileItem[]
+}
+
+defineProps<Props>()
+
+const emit = defineEmits<{
+  'update:collapsed': [value: boolean]
+  'file-select': [fileId: string]
+  'file-delete': [fileId: string]
+}>()
+
+const toggleCollapse = () => {
+  emit('update:collapsed', !props.collapsed)
+}
+</script>
+```
+
+### 6.4 属性面板组件
+
+```vue
+<!-- PropertiesPanel.vue -->
+<template>
+  <div class="side-panel properties-panel" :class="{ collapsed }">
+    <div class="panel-header">
+      <h3>属性设置</h3>
+      <button class="collapse-btn" @click="toggleCollapse">
+        <i class="icon-chevron-right"></i>
+      </button>
+    </div>
+    <div class="panel-content" v-if="!collapsed">
+      <!-- 变换控制 -->
+      <div class="property-group">
+        <h4>变换</h4>
+        <div class="transform-controls">
+          <div class="control-row">
+            <label>位置 X</label>
+            <input 
+              type="number" 
+              :value="transform.x" 
+              @input="updateTransform('x', $event)"
+              step="0.1"
+            >
+          </div>
+          <div class="control-row">
+            <label>位置 Y</label>
+            <input 
+              type="number" 
+              :value="transform.y" 
+              @input="updateTransform('y', $event)"
+              step="0.1"
+            >
+          </div>
+          <div class="control-row">
+            <label>位置 Z</label>
+            <input 
+              type="number" 
+              :value="transform.z" 
+              @input="updateTransform('z', $event)"
+              step="0.1"
+            >
           </div>
         </div>
-        
-        <!-- 左侧文件面板 -->
-        <div class="side-panel file-panel">
-          <div class="panel-header">
-            <h3>模型文件</h3>
-            <button class="collapse-btn" id="file-panel-collapse">
-              <i class="icon-chevron-left"></i>
-            </button>
-          </div>
-          <div class="panel-content">
-            <div class="file-tree" id="file-tree">
-              <!-- 文件列表将动态生成 -->
-            </div>
-          </div>
-        </div>
-        
-        <!-- 右侧属性面板 -->
-        <div class="side-panel properties-panel">
-          <div class="panel-header">
-            <h3>属性设置</h3>
-            <button class="collapse-btn" id="props-panel-collapse">
-              <i class="icon-chevron-right"></i>
-            </button>
-          </div>
-          <div class="panel-content">
-            <!-- 变换控制 -->
-            <div class="property-group">
-              <h4>变换</h4>
-              <div class="transform-controls">
-                <div class="control-row">
-                  <label>位置 X</label>
-                  <input type="number" id="pos-x" value="0" step="0.1">
-                </div>
-                <div class="control-row">
-                  <label>位置 Y</label>
-                  <input type="number" id="pos-y" value="0" step="0.1">
-                </div>
-                <div class="control-row">
-                  <label>位置 Z</label>
-                  <input type="number" id="pos-z" value="0" step="0.1">
-                </div>
-              </div>
-            </div>
-            
-            <!-- 材质设置 -->
-            <div class="property-group">
-              <h4>材质</h4>
-              <div class="material-controls">
-                <div class="control-row">
-                  <label>颜色</label>
-                  <input type="color" id="model-color" value="#ff6b6b">
-                </div>
-                <div class="control-row">
-                  <label>透明度</label>
-                  <input type="range" id="model-opacity" min="0" max="1" step="0.1" value="1">
-                </div>
-              </div>
-            </div>
-            
-            <!-- 打印设置 -->
-            <div class="property-group">
-              <h4>打印设置</h4>
-              <div class="print-controls">
-                <div class="control-row">
-                  <label>层高</label>
-                  <select id="layer-height">
-                    <option value="0.1">0.1mm</option>
-                    <option value="0.2" selected>0.2mm</option>
-                    <option value="0.3">0.3mm</option>
-                  </select>
-                </div>
-                <div class="control-row">
-                  <label>填充密度</label>
-                  <input type="range" id="infill-density" min="0" max="100" value="20">
-                  <span id="infill-value">20%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
+      
+      <!-- 材质设置 -->
+      <div class="property-group">
+        <h4>材质</h4>
+        <div class="material-controls">
+          <div class="control-row">
+             <label>颜色</label>
+             <input 
+               type="color" 
+               :value="material.color" 
+               @input="updateMaterial('color', $event)"
+             >
+           </div>
+           <div class="control-row">
+             <label>透明度</label>
+             <input 
+               type="range" 
+               :value="material.opacity" 
+               @input="updateMaterial('opacity', $event)"
+               min="0" 
+               max="1" 
+               step="0.1"
+             >
+           </div>
+         </div>
+       </div>
+       
+       <!-- 打印设置 -->
+       <div class="property-group">
+         <h4>打印设置</h4>
+         <div class="print-controls">
+           <div class="control-row">
+             <label>层高</label>
+             <select 
+               :value="printSettings.layerHeight" 
+               @change="updatePrintSettings('layerHeight', $event)"
+             >
+               <option value="0.1">0.1mm</option>
+               <option value="0.2">0.2mm</option>
+               <option value="0.3">0.3mm</option>
+             </select>
+           </div>
+           <div class="control-row">
+             <label>填充密度</label>
+             <input 
+               type="range" 
+               :value="printSettings.infillDensity" 
+               @input="updatePrintSettings('infillDensity', $event)"
+               min="0" 
+               max="100"
+             >
+             <span>{{ printSettings.infillDensity }}%</span>
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>
+ </template>
+ 
+ <script setup lang="ts">
+ import { ref, computed } from 'vue'
+ import * as BABYLON from 'babylonjs'
+ 
+ interface Props {
+   collapsed: boolean
+   model: BABYLON.AbstractMesh | null
+ }
+ 
+ const props = defineProps<Props>()
+ 
+ const emit = defineEmits<{
+   'update:collapsed': [value: boolean]
+   'transform-change': [transform: { x: number; y: number; z: number }]
+   'material-change': [material: { color: string; opacity: number }]
+   'print-settings-change': [settings: { layerHeight: number; infillDensity: number }]
+ }>()
+ 
+ // 响应式数据
+ const transform = ref({ x: 0, y: 0, z: 0 })
+ const material = ref({ color: '#ff6b6b', opacity: 1 })
+ const printSettings = ref({ layerHeight: 0.2, infillDensity: 20 })
+ 
+ // 方法
+ const toggleCollapse = () => {
+   emit('update:collapsed', !props.collapsed)
+ }
+ 
+ const updateTransform = (axis: 'x' | 'y' | 'z', event: Event) => {
+   const value = parseFloat((event.target as HTMLInputElement).value)
+   transform.value[axis] = value
+   emit('transform-change', { ...transform.value })
+ }
+ 
+ const updateMaterial = (property: 'color' | 'opacity', event: Event) => {
+   const value = (event.target as HTMLInputElement).value
+   if (property === 'color') {
+     material.value.color = value
+   } else {
+     material.value.opacity = parseFloat(value)
+   }
+   emit('material-change', { ...material.value })
+ }
+ 
+ const updatePrintSettings = (property: 'layerHeight' | 'infillDensity', event: Event) => {
+   const value = parseFloat((event.target as HTMLInputElement | HTMLSelectElement).value)
+   printSettings.value[property] = value
+   emit('print-settings-change', { ...printSettings.value })
+ }
+ </script>
+ ```
+ 
+ ### 6.5 底部工具栏组件
+ 
+ ```vue
+ <!-- BottomToolbar.vue -->
+ <template>
+   <div class="bottom-toolbar" :class="{ hidden: isHidden }">
+     <div class="tool-group">
+       <button 
+         v-for="tool in tools" 
+         :key="tool.id"
+         class="tool-btn"
+         :class="{ active: activeTool === tool.id }"
+         @click="$emit('tool-select', tool.id)"
+         :title="tool.tooltip"
+       >
+         <i :class="tool.icon"></i>
+         <span>{{ tool.label }}</span>
+       </button>
+     </div>
+   </div>
+ </template>
+ 
+ <script setup lang="ts">
+ interface Props {
+   activeTool: string
+   isHidden?: boolean
+ }
+ 
+ defineProps<Props>()
+ 
+ const emit = defineEmits<{
+   'tool-select': [toolId: string]
+ }>()
+ 
+ const tools = [
+   { id: 'home-tool', icon: 'icon-home', label: '回到原点', tooltip: '回到原点' },
+   { id: 'rotate-tool', icon: 'icon-rotate', label: '旋转', tooltip: '旋转' },
+   { id: 'measure-tool', icon: 'icon-ruler', label: '测量 (M)', tooltip: '测量 (M)' },
+   { id: 'properties-tool', icon: 'icon-cube', label: '模型属性', tooltip: '模型属性' },
+   { id: 'move-tool', icon: 'icon-move', label: '平移', tooltip: '平移' },
+   { id: 'create-tool', icon: 'icon-plus', label: '创建', tooltip: '创建' },
+   { id: 'tree-tool', icon: 'icon-tree', label: '结构树', tooltip: '结构树' },
+   { id: 'box-tool', icon: 'icon-box', label: '包装盒', tooltip: '包装盒' },
+   { id: 'drag-tool', icon: 'icon-hand', label: '拖动', tooltip: '拖动' },
+   { id: 'color-tool', icon: 'icon-palette', label: '自由上色', tooltip: '自由上色' },
+   { id: 'fullscreen-tool', icon: 'icon-fullscreen', label: '全屏', tooltip: '全屏' },
+   { id: 'settings-tool', icon: 'icon-settings', label: '设置', tooltip: '设置' }
+ ]
+ </script>
+ ```
+ 
+ ### 6.6 Vue3 Composables
+ 
+ #### use3DViewer Composable
+ 
+ ```typescript
+ // composables/use3DViewer.ts
+ import { ref, onUnmounted } from 'vue'
+ import * as BABYLON from 'babylonjs'
+ import 'babylonjs-loaders'
+ 
+ export function use3DViewer() {
+   const engine = ref<BABYLON.Engine | null>(null)
+   const scene = ref<BABYLON.Scene | null>(null)
+   const camera = ref<BABYLON.ArcRotateCamera | null>(null)
+   const canvas = ref<HTMLCanvasElement | null>(null)
+ 
+   const initBabylon = async (canvasElement: HTMLCanvasElement) => {
+     canvas.value = canvasElement
+     engine.value = new BABYLON.Engine(canvasElement, true)
+     
+     // 创建场景
+     scene.value = new BABYLON.Scene(engine.value)
+     scene.value.clearColor = new BABYLON.Color3(0.94, 0.96, 0.97)
+     
+     // 创建相机
+     camera.value = new BABYLON.ArcRotateCamera(
+       "camera",
+       -Math.PI / 2,
+       Math.PI / 2.5,
+       10,
+       BABYLON.Vector3.Zero(),
+       scene.value
+     )
+     camera.value.attachControls(canvasElement, true)
+     
+     // 创建光源
+     const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene.value)
+     light.intensity = 0.7
+     
+     const directionalLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -1, -1), scene.value)
+     directionalLight.intensity = 0.5
+     
+     // 渲染循环
+     engine.value.runRenderLoop(() => {
+       scene.value?.render()
+     })
+     
+     // 窗口大小调整
+     window.addEventListener('resize', () => {
+       engine.value?.resize()
+     })
+   }
+ 
+   const loadModel = async (file: File): Promise<BABYLON.AbstractMesh | null> => {
+     if (!scene.value) return null
+     
+     return new Promise((resolve, reject) => {
+       const extension = file.name.split('.').pop()?.toLowerCase()
+       
+       if (['3mf', 'stl', 'obj', 'glb'].includes(extension || '')) {
+         BABYLON.SceneLoader.ImportMesh("", "", file, scene.value!, (meshes) => {
+           resolve(meshes[0] || null)
+         }, undefined, (error) => {
+           reject(error)
+         })
+       } else {
+         reject(new Error('不支持的文件格式'))
+       }
+     })
+   }
+ 
+   const setupModel = (mesh: BABYLON.AbstractMesh) => {
+     // 居中模型
+     const boundingInfo = mesh.getBoundingInfo()
+     const center = boundingInfo.boundingBox.centerWorld
+     mesh.position = mesh.position.subtract(center)
+     
+     // 调整相机位置
+     const size = boundingInfo.boundingBox.extendSizeWorld
+     const maxSize = Math.max(size.x, size.y, size.z)
+     if (camera.value) {
+       camera.value.radius = maxSize * 3
+     }
+     
+     // 设置默认材质
+     if (!mesh.material && scene.value) {
+       const material = new BABYLON.StandardMaterial("modelMaterial", scene.value)
+       material.diffuseColor = new BABYLON.Color3(1, 0.42, 0.42)
+       mesh.material = material
+     }
+   }
+ 
+   const createGrid = () => {
+     if (!scene.value) return
+     
+     const gridSize = 20
+     const gridSpacing = 1
+     
+     // 创建网格线
+     for (let i = -gridSize; i <= gridSize; i++) {
+       // X方向线
+       const lineX = BABYLON.MeshBuilder.CreateLines("lineX" + i, {
+         points: [
+           new BABYLON.Vector3(-gridSize, 0, i * gridSpacing),
+           new BABYLON.Vector3(gridSize, 0, i * gridSpacing)
+         ]
+       }, scene.value)
+       lineX.color = new BABYLON.Color3(0.7, 0.7, 0.7)
+       
+       // Z方向线
+       const lineZ = BABYLON.MeshBuilder.CreateLines("lineZ" + i, {
+         points: [
+           new BABYLON.Vector3(i * gridSpacing, 0, -gridSize),
+           new BABYLON.Vector3(i * gridSpacing, 0, gridSize)
+         ]
+       }, scene.value)
+       lineZ.color = new BABYLON.Color3(0.7, 0.7, 0.7)
+     }
+   }
+ 
+   const dispose = () => {
+     engine.value?.dispose()
+   }
+ 
+   onUnmounted(() => {
+     dispose()
+   })
+ 
+   return {
+     engine,
+     scene,
+     camera,
+     initBabylon,
+     loadModel,
+     setupModel,
+     createGrid,
+     dispose
+   }
+ }
+ ```
+ 
+ #### useKeyboardShortcuts Composable
+ 
+ ```typescript
+ // composables/useKeyboardShortcuts.ts
+ import { onMounted, onUnmounted } from 'vue'
+ 
+ type ShortcutHandler = () => void
+ type ShortcutMap = Record<string, ShortcutHandler>
+ 
+ export function useKeyboardShortcuts(shortcuts: ShortcutMap) {
+   const handleKeydown = (event: KeyboardEvent) => {
+     const key = event.key.toLowerCase()
+     const ctrl = event.ctrlKey || event.metaKey
+     const shift = event.shiftKey
+     const alt = event.altKey
+     
+     // 构建快捷键字符串
+     let shortcut = ''
+     if (ctrl) shortcut += 'ctrl+'
+     if (shift) shortcut += 'shift+'
+     if (alt) shortcut += 'alt+'
+     shortcut += key
+     
+     // 检查是否有匹配的快捷键
+     const handler = shortcuts[shortcut] || shortcuts[key]
+     if (handler) {
+       event.preventDefault()
+       handler()
+     }
+   }
+ 
+   onMounted(() => {
+     document.addEventListener('keydown', handleKeydown)
+   })
+ 
+   onUnmounted(() => {
+     document.removeEventListener('keydown', handleKeydown)
+   })
+ }
+ ```
         
         <!-- 底部工具栏 -->
         <div class="bottom-toolbar">
@@ -1691,21 +2056,245 @@ const viewer = new FullScreen3DViewer('viewer-container');
 - 屏幕阅读器支持
 - 多语言支持
 
-## 9. 集成说明
+## 9. Vue3 集成说明
 
-全屏3D查看器作为独立模块，可以通过以下方式集成到主应用中：
+### 9.1 在主应用中使用全屏3D查看器
 
-```javascript
-// 在主应用中调用
-function openFullscreen3DViewer(modelFile) {
-  const viewerContainer = document.getElementById('fullscreen-viewer');
-  viewerContainer.style.display = 'block';
-  
-  const viewer = new FullScreen3DViewer('fullscreen-viewer');
-  if (modelFile) {
-    viewer.loadModel(modelFile);
+```vue
+<!-- App.vue -->
+<template>
+  <div id="app">
+    <!-- 主界面内容 -->
+    <div class="main-content">
+      <button @click="openViewer" class="open-viewer-btn">
+        打开3D查看器
+      </button>
+    </div>
+    
+    <!-- 全屏3D查看器 -->
+    <FullScreen3DViewer
+      v-model:visible="viewerVisible"
+      :initial-file="selectedFile"
+      @close="handleViewerClose"
+      @file-loaded="handleFileLoaded"
+      @error="handleError"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import FullScreen3DViewer from '@/components/FullScreen3DViewer.vue'
+
+const viewerVisible = ref(false)
+const selectedFile = ref<File | undefined>()
+
+const openViewer = (file?: File) => {
+  selectedFile.value = file
+  viewerVisible.value = true
+}
+
+const handleViewerClose = () => {
+  viewerVisible.value = false
+  selectedFile.value = undefined
+}
+
+const handleFileLoaded = (file: File) => {
+  console.log('文件已加载:', file.name)
+}
+
+const handleError = (error: string) => {
+  console.error('3D查看器错误:', error)
+}
+</script>
+```
+
+### 9.2 路由集成 (Vue Router)
+
+```typescript
+// router/index.ts
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '@/views/Home.vue'
+import Viewer3D from '@/views/Viewer3D.vue'
+
+const routes = [
+  {
+    path: '/',
+    name: 'Home',
+    component: Home
+  },
+  {
+    path: '/viewer/:fileId?',
+    name: 'Viewer3D',
+    component: Viewer3D,
+    props: true
   }
+]
+
+export default createRouter({
+  history: createWebHistory(),
+  routes
+})
+```
+
+```vue
+<!-- views/Viewer3D.vue -->
+<template>
+  <FullScreen3DViewer
+    :model-visible="true"
+    :initial-file="initialFile"
+    @close="$router.push('/')"
+    @file-loaded="handleFileLoaded"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import FullScreen3DViewer from '@/components/FullScreen3DViewer.vue'
+
+interface Props {
+  fileId?: string
+}
+
+const props = defineProps<Props>()
+const route = useRoute()
+const initialFile = ref<File>()
+
+onMounted(async () => {
+  if (props.fileId) {
+    // 根据fileId加载文件
+    initialFile.value = await loadFileById(props.fileId)
+  }
+})
+
+const loadFileById = async (id: string): Promise<File> => {
+  // 实现文件加载逻辑
+  // 这里可以从API或本地存储加载文件
+  throw new Error('文件加载功能待实现')
+}
+
+const handleFileLoaded = (file: File) => {
+  console.log('文件已加载:', file.name)
+}
+</script>
+```
+
+### 9.3 状态管理集成 (Pinia)
+
+```typescript
+// stores/viewer3d.ts
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+
+export const useViewer3DStore = defineStore('viewer3d', () => {
+  const isVisible = ref(false)
+  const currentFile = ref<File | null>(null)
+  const viewerSettings = ref({
+    showGrid: true,
+    backgroundColor: '#f0f4f8',
+    cameraSpeed: 1.0
+  })
+
+  const openViewer = (file?: File) => {
+    currentFile.value = file || null
+    isVisible.value = true
+  }
+
+  const closeViewer = () => {
+    isVisible.value = false
+    currentFile.value = null
+  }
+
+  const updateSettings = (settings: Partial<typeof viewerSettings.value>) => {
+    viewerSettings.value = { ...viewerSettings.value, ...settings }
+  }
+
+  return {
+    isVisible,
+    currentFile,
+    viewerSettings,
+    openViewer,
+    closeViewer,
+    updateSettings
+  }
+})
+```
+
+### 9.4 TypeScript 类型定义
+
+```typescript
+// types/viewer3d.ts
+import * as BABYLON from 'babylonjs'
+
+export interface ModelFile {
+  id: string
+  name: string
+  size: number
+  type: string
+  lastModified: number
+  active: boolean
+}
+
+export interface Transform3D {
+  position: { x: number; y: number; z: number }
+  rotation: { x: number; y: number; z: number }
+  scale: { x: number; y: number; z: number }
+}
+
+export interface Material3D {
+  color: string
+  opacity: number
+  metallic: number
+  roughness: number
+}
+
+export interface PrintSettings {
+  layerHeight: number
+  infillDensity: number
+  printSpeed: number
+  temperature: number
+  bedTemperature: number
+}
+
+export interface ViewerConfig {
+  showGrid: boolean
+  backgroundColor: string
+  cameraSpeed: number
+  autoRotate: boolean
+}
+
+export interface Viewer3DEvents {
+  'model-loaded': [mesh: BABYLON.AbstractMesh]
+  'model-selected': [mesh: BABYLON.AbstractMesh]
+  'transform-changed': [transform: Transform3D]
+  'material-changed': [material: Material3D]
+  'view-changed': [viewType: string]
+  'tool-selected': [toolId: string]
+  'error': [error: string]
 }
 ```
 
-这个全屏3D查看器设计提供了完整的3D模型查看、编辑和打印准备功能，参考了嘉立创3D的优秀界面设计，同时针对我们的3D生成打印平台进行了优化和定制。
+### 9.5 项目结构
+
+```
+src/
+├── components/
+│   ├── FullScreen3DViewer.vue      # 主查看器组件
+│   ├── ViewControls.vue            # 视角控制组件
+│   ├── FilePanel.vue               # 文件面板组件
+│   ├── PropertiesPanel.vue         # 属性面板组件
+│   └── BottomToolbar.vue           # 底部工具栏组件
+├── composables/
+│   ├── use3DViewer.ts              # 3D查看器逻辑
+│   ├── useKeyboardShortcuts.ts     # 键盘快捷键
+│   └── useFileManager.ts           # 文件管理
+├── stores/
+│   └── viewer3d.ts                 # Pinia状态管理
+├── types/
+│   └── viewer3d.ts                 # TypeScript类型定义
+└── views/
+    └── Viewer3D.vue                # 3D查看器页面
+```
+
+这个基于Vue3的全屏3D查看器设计提供了完整的组件化架构，使用了Vue3的最新特性如Composition API、TypeScript支持、响应式系统等，同时保持了与原设计相同的功能和用户体验。通过模块化的组件设计，可以轻松地在不同的Vue3项目中复用和扩展。
