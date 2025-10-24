@@ -1,13 +1,15 @@
 <template>
   <button
     :class="[
-      'px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
+      'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
       variantClasses,
-      disabled && 'opacity-50 cursor-not-allowed',
+      sizeClasses,
+      (disabled || loading) && 'opacity-50 cursor-not-allowed',
     ]"
-    :disabled="disabled"
+    :disabled="disabled || loading"
     @click="handleClick"
   >
+    <span v-if="loading" class="mr-2">⏳</span>
     <slot />
   </button>
 </template>
@@ -18,11 +20,15 @@ import { computed } from 'vue'
 interface Props {
   variant?: 'primary' | 'secondary' | 'danger'
   disabled?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  loading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   variant: 'primary',
   disabled: false,
+  size: 'md',
+  loading: false,
 })
 
 const emit = defineEmits<{
@@ -42,8 +48,21 @@ const variantClasses = computed(() => {
   }
 })
 
+const sizeClasses = computed(() => {
+  switch (props.size) {
+    case 'sm':
+      return 'px-3 py-1.5 text-sm'
+    case 'md':
+      return 'px-4 py-2 text-base'
+    case 'lg':
+      return 'px-6 py-3 text-lg'
+    default:
+      return 'px-4 py-2 text-base'
+  }
+})
+
 const handleClick = (event: MouseEvent) => {
-  if (!props.disabled) {
+  if (!props.disabled && !props.loading) {
     emit('click', event)
   }
 }
