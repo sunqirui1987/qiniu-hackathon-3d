@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { MeshyClient, MeshyTextTo3DPreviewOptions, MeshyTaskStatus } from '../utils/meshyClient'
 import type { Model3D } from '../types/model'
+import { getUserFriendlyErrorMessage } from '../utils/errorHandler'
 
 export interface TextTo3DOptions {
   prompt: string
@@ -29,16 +30,18 @@ export interface TextTo3DState {
 export function useTextTo3D(apiKey: string) {
   const client = new MeshyClient(apiKey)
   
-  const status = ref<'idle' | 'generating' | 'completed' | 'error'>('idle')
+  const status = ref<'idle' | 'generating' | 'completed' | 'error' | 'cancelled'>('idle')
   const progress = ref<number>(0)
   const error = ref<string | null>(null)
   const result = ref<Model3D | null>(null)
   const previewTaskId = ref<string | null>(null)
   const refineTaskId = ref<string | null>(null)
+  const retryCount = ref<number>(0)
   
   const isGenerating = computed(() => status.value === 'generating')
   const isCompleted = computed(() => status.value === 'completed')
   const hasError = computed(() => status.value === 'error')
+  const isCancelled = computed(() => status.value === 'cancelled')
 
   const generateModel = async (options: TextTo3DOptions): Promise<Model3D> => {
     try {
@@ -99,11 +102,30 @@ export function useTextTo3D(apiKey: string) {
 
       return model
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      const errorMessage = getUserFriendlyErrorMessage(err)
       error.value = errorMessage
       status.value = 'error'
       throw new Error(errorMessage)
     }
+  }
+
+  const cancel = () => {
+    if (!isGenerating.value) return
+
+    if (previewTaskId.value) {
+      client.cancelTask(previewTaskId.value)
+    }
+    if (refineTaskId.value) {
+      client.cancelTask(refineTaskId.value)
+    }
+
+    status.value = 'cancelled'
+    error.value = 'Generation cancelled by user'
+  }
+
+  const retry = async (options: TextTo3DOptions): Promise<Model3D> => {
+    retryCount.value++
+    return generateModel(options)
   }
 
   const reset = () => {
@@ -113,6 +135,7 @@ export function useTextTo3D(apiKey: string) {
     result.value = null
     previewTaskId.value = null
     refineTaskId.value = null
+    retryCount.value = 0
   }
 
   const convertTaskToModel = (taskStatus: MeshyTaskStatus, prompt: string): Model3D => {
@@ -136,10 +159,14 @@ export function useTextTo3D(apiKey: string) {
     result,
     previewTaskId,
     refineTaskId,
+    retryCount,
     isGenerating,
     isCompleted,
     hasError,
+    isCancelled,
     generateModel,
+    cancel,
+    retry,
     reset,
   }
 }
