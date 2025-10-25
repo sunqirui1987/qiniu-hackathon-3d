@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'auth-server',
       script: './auth-server.js',
-      interpreter: process.env.PM2_INTERPRETER || 'node',
+      interpreter: process.env.PM2_INTERPRETER || 'bun',
       instances: 1,
       exec_mode: 'cluster',
       env_production: {

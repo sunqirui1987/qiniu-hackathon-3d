@@ -40,7 +40,7 @@ Supabase提供开箱即用的OAuth支持,无需自建后端。
 3. 填写信息:
    - Application name: `3D生成打印平台`
    - Homepage URL: `http://localhost:5173`
-   - Authorization callback URL: `http://localhost:3000/auth/github/callback`
+   - Authorization callback URL: `http://localhost:3001/auth/github/callback`
 4. 获取Client ID和Client Secret
 
 ### Google OAuth应用
@@ -50,14 +50,14 @@ Supabase提供开箱即用的OAuth支持,无需自建后端。
 3. 启用Google+ API
 4. 创建OAuth 2.0客户端ID:
    - 应用类型: Web应用
-   - 授权的重定向URI: `http://localhost:3000/auth/google/callback`
+   - 授权的重定向URI: `http://localhost:3001/auth/google/callback`
 5. 获取客户端ID和客户端密钥
 
 ## 环境变量配置
 
 ### 前端 (.env)
 ```
-VITE_API_BASE_URL=http://localhost:3000
+VITE_API_BASE_URL=http://localhost:3001
 ```
 
 ### 后端 (.env)
