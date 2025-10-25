@@ -1,21 +1,19 @@
-import { vi } from 'vitest'
-
 global.FormData = class FormData {
-  private data: Map<string, any> = new Map()
+  private data: Map<string, unknown> = new Map()
   
-  append(key: string, value: any) {
+  append(key: string, value: unknown) {
     this.data.set(key, value)
   }
   
   get(key: string) {
     return this.data.get(key)
   }
-} as any
+} as typeof FormData
 
 global.File = class File {
   constructor(
-    public parts: any[],
+    public parts: BlobPart[],
     public filename: string,
-    public options?: any
+    public options?: FilePropertyBag
   ) {}
-} as any
+} as typeof File

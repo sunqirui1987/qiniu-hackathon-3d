@@ -2,28 +2,28 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useMeshyTask } from '../useMeshyTask'
 
 vi.mock('../../utils/meshyClient', () => ({
-  MeshyClient: vi.fn().mockImplementation(() => ({
-    getTextTo3DTaskStatus: vi.fn().mockResolvedValue({
+  MeshyClient: class {
+    getTextTo3DTaskStatus = vi.fn().mockResolvedValue({
       id: 'task-id',
       status: 'PENDING',
       progress: 0,
       created_at: new Date().toISOString()
-    }),
-    getImageTo3DTaskStatus: vi.fn().mockResolvedValue({
+    })
+    getImageTo3DTaskStatus = vi.fn().mockResolvedValue({
       id: 'task-id',
       status: 'PENDING',
       progress: 0,
       created_at: new Date().toISOString()
-    }),
-    pollTaskUntilComplete: vi.fn().mockResolvedValue({
+    })
+    pollTaskUntilComplete = vi.fn().mockResolvedValue({
       id: 'task-id',
       status: 'SUCCEEDED',
       progress: 100,
       model_urls: { glb: 'https://example.com/model.glb' },
       created_at: new Date().toISOString(),
       finished_at: new Date().toISOString()
-    }),
-  }))
+    })
+  }
 }))
 
 describe('useMeshyTask', () => {

@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useTextTo3D } from '../useTextTo3D'
 
 vi.mock('../../utils/meshyClient', () => ({
-  MeshyClient: vi.fn().mockImplementation(() => ({
-    createTextTo3DPreview: vi.fn().mockResolvedValue({ result: 'preview-task-id' }),
-    createTextTo3DRefine: vi.fn().mockResolvedValue({ result: 'refine-task-id' }),
-    pollTaskUntilComplete: vi.fn().mockResolvedValue({
+  MeshyClient: class {
+    createTextTo3DPreview = vi.fn().mockResolvedValue({ result: 'preview-task-id' })
+    createTextTo3DRefine = vi.fn().mockResolvedValue({ result: 'refine-task-id' })
+    pollTaskUntilComplete = vi.fn().mockResolvedValue({
       id: 'task-id',
       status: 'SUCCEEDED',
       progress: 100,
@@ -13,9 +13,9 @@ vi.mock('../../utils/meshyClient', () => ({
       thumbnail_url: 'https://example.com/thumb.jpg',
       created_at: new Date().toISOString(),
       finished_at: new Date().toISOString()
-    }),
-    cancelTask: vi.fn(),
-  }))
+    })
+    cancelTask = vi.fn()
+  }
 }))
 
 describe('useTextTo3D', () => {
