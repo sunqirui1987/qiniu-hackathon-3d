@@ -1,228 +1,291 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
+import { mount, VueWrapper } from '@vue/test-utils'
+import { ref, computed } from 'vue'
 import BambuConnector from '../BambuConnector.vue'
-import { useBambuConnect } from '@/composables/useBambuConnect'
+import Card from '@/components/ui/Card.vue'
+import Button from '@/components/ui/Button.vue'
 
-vi.mock('@/composables/useBambuConnect')
+let mockConnected = ref(false)
+let mockPrinters = ref<string[]>([])
+let mockError = ref<string | null>(null)
+let mockIsChecking = ref(false)
 
-describe('BambuConnector.vue', () => {
-  const mockCheckBambuConnect = vi.fn()
-  const mockSendToPrint = vi.fn()
-  const mockGetBambuConnectDownloadUrl = vi.fn()
+vi.mock('@/composables/useBambuConnect', () => ({
+  useBambuConnect: () => {
+    const hasPrinters = computed(() => mockPrinters.value.length > 0)
+    const hasError = computed(() => mockError.value !== null)
+    
+    return {
+      connected: mockConnected,
+      printers: mockPrinters,
+      error: mockError,
+      isChecking: mockIsChecking,
+      hasPrinters,
+      hasError,
+      checkBambuConnect: vi.fn().mockResolvedValue(true),
+    }
+  },
+}))
+
+describe('BambuConnector', () => {
+  let wrapper: VueWrapper<InstanceType<typeof BambuConnector>>
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockConnected.value = false
+    mockPrinters.value = []
+    mockError.value = null
+    mockIsChecking.value = false
+  })
 
-    mockCheckBambuConnect.mockResolvedValue(false)
-    mockSendToPrint.mockResolvedValue({ success: true, message: '发送成功' })
-    mockGetBambuConnectDownloadUrl.mockReturnValue('https://example.com/download')
+  afterEach(() => {
+    if (wrapper) {
+      wrapper.unmount()
+    }
+  })
 
-    vi.mocked(useBambuConnect).mockReturnValue({
-      state: {
-        isConnectInstalled: false,
-        connectVersion: null,
-        isConnecting: false,
-        lastError: null
-      },
-      tempDir: { value: '/tmp/bambu-files' },
-      checkBambuConnect: mockCheckBambuConnect,
-      sendToPrint: mockSendToPrint,
-      discoverPrinters: vi.fn(),
-      getBambuConnectDownloadUrl: mockGetBambuConnectDownloadUrl,
-      detectPlatform: vi.fn()
+  describe('Component Rendering', () => {
+    it('should render the component', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      expect(wrapper.exists()).toBe(true)
+    })
+
+    it('should render connection status indicator', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const statusIndicator = wrapper.find('.w-3.h-3.rounded-full')
+      expect(statusIndicator.exists()).toBe(true)
+    })
+
+    it('should render check connection button', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const button = wrapper.findComponent(Button)
+      expect(button.exists()).toBe(true)
+      expect(button.text()).toContain('Check Connection')
     })
   })
 
-  it('should render component correctly', () => {
-    const wrapper = mount(BambuConnector)
+  describe('Connection Status Display', () => {
+    it('should show disconnected status initially', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
 
-    expect(wrapper.find('.bambu-connector').exists()).toBe(true)
-    expect(wrapper.find('.status-section').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Disconnected')
+      const statusIndicator = wrapper.find('.w-3.h-3.rounded-full')
+      expect(statusIndicator.classes()).toContain('bg-red-500')
+    })
   })
 
-  it('should call checkBambuConnect on mount', () => {
-    mount(BambuConnector)
+  describe('Print Settings Form', () => {
+    beforeEach(() => {
+      mockConnected.value = true
+      mockPrinters.value = ['Bambu Lab X1 Carbon']
+    })
 
-    expect(mockCheckBambuConnect).toHaveBeenCalled()
+    it('should render material select', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const materialSelect = wrapper.find('#material')
+      expect(materialSelect.exists()).toBe(true)
+    })
+
+    it('should render layer height input', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const layerHeightInput = wrapper.find('#layerHeight')
+      expect(layerHeightInput.exists()).toBe(true)
+    })
+
+    it('should render infill density input', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const infillDensityInput = wrapper.find('#infillDensity')
+      expect(infillDensityInput.exists()).toBe(true)
+    })
+
+    it('should render supports checkbox', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const supportsCheckbox = wrapper.find('#supports')
+      expect(supportsCheckbox.exists()).toBe(true)
+    })
+
+    it('should render temperature input', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const temperatureInput = wrapper.find('#temperature')
+      expect(temperatureInput.exists()).toBe(true)
+    })
   })
 
-  it('should show download button when Bambu Connect is not installed', () => {
-    const wrapper = mount(BambuConnector)
+  describe('Material Options', () => {
+    beforeEach(() => {
+      mockConnected.value = true
+      mockPrinters.value = ['Bambu Lab X1 Carbon']
+    })
 
-    expect(wrapper.find('button').text()).toContain('下载 Bambu Connect')
+    it('should have PLA option', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const materialSelect = wrapper.find('#material')
+      const options = materialSelect.findAll('option')
+      const plaOption = options.find((option) => option.text() === 'PLA')
+      expect(plaOption).toBeTruthy()
+    })
+
+    it('should have ABS option', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const materialSelect = wrapper.find('#material')
+      const options = materialSelect.findAll('option')
+      const absOption = options.find((option) => option.text() === 'ABS')
+      expect(absOption).toBeTruthy()
+    })
+
+    it('should have PETG option', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const materialSelect = wrapper.find('#material')
+      const options = materialSelect.findAll('option')
+      const petgOption = options.find((option) => option.text() === 'PETG')
+      expect(petgOption).toBeTruthy()
+    })
+
+    it('should have TPU option', () => {
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
+
+      const materialSelect = wrapper.find('#material')
+      const options = materialSelect.findAll('option')
+      const tpuOption = options.find((option) => option.text() === 'TPU')
+      expect(tpuOption).toBeTruthy()
+    })
   })
 
-  it('should show print button when Bambu Connect is installed', () => {
-    vi.mocked(useBambuConnect).mockReturnValue({
-      state: {
-        isConnectInstalled: true,
-        connectVersion: null,
-        isConnecting: false,
-        lastError: null
-      },
-      tempDir: { value: '/tmp/bambu-files' },
-      checkBambuConnect: mockCheckBambuConnect,
-      sendToPrint: mockSendToPrint,
-      discoverPrinters: vi.fn(),
-      getBambuConnectDownloadUrl: mockGetBambuConnectDownloadUrl,
-      detectPlatform: vi.fn()
+  describe('Input Validation', () => {
+    beforeEach(() => {
+      mockConnected.value = true
+      mockPrinters.value = ['Bambu Lab X1 Carbon']
+      
+      wrapper = mount(BambuConnector, {
+        global: {
+          components: {
+            Card,
+            Button,
+          },
+        },
+      })
     })
 
-    const wrapper = mount(BambuConnector, {
-      props: {
-        modelUrl: '/test/model.3mf'
-      }
+    it('should have correct min/max for layer height', () => {
+      const layerHeightInput = wrapper.find('#layerHeight')
+      expect(layerHeightInput.attributes('min')).toBe('0.1')
+      expect(layerHeightInput.attributes('max')).toBe('0.4')
+      expect(layerHeightInput.attributes('step')).toBe('0.01')
     })
 
-    expect(wrapper.find('.print-section').exists()).toBe(true)
-    expect(wrapper.find('button').text()).toContain('发送到 Bambu Connect')
-  })
-
-  it('should open download URL when download button is clicked', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
-    const wrapper = mount(BambuConnector)
-
-    await wrapper.find('button').trigger('click')
-
-    expect(mockGetBambuConnectDownloadUrl).toHaveBeenCalled()
-    expect(openSpy).toHaveBeenCalledWith('https://example.com/download', '_blank')
-
-    openSpy.mockRestore()
-  })
-
-  it('should call sendToPrint when print button is clicked', async () => {
-    vi.mocked(useBambuConnect).mockReturnValue({
-      state: {
-        isConnectInstalled: true,
-        connectVersion: null,
-        isConnecting: false,
-        lastError: null
-      },
-      tempDir: { value: '/tmp/bambu-files' },
-      checkBambuConnect: mockCheckBambuConnect,
-      sendToPrint: mockSendToPrint,
-      discoverPrinters: vi.fn(),
-      getBambuConnectDownloadUrl: mockGetBambuConnectDownloadUrl,
-      detectPlatform: vi.fn()
+    it('should have correct min/max for infill density', () => {
+      const infillDensityInput = wrapper.find('#infillDensity')
+      expect(infillDensityInput.attributes('min')).toBe('0')
+      expect(infillDensityInput.attributes('max')).toBe('100')
+      expect(infillDensityInput.attributes('step')).toBe('5')
     })
 
-    const wrapper = mount(BambuConnector, {
-      props: {
-        modelUrl: '/test/model.3mf',
-        modelName: 'Test Model'
-      }
+    it('should have correct min/max for temperature', () => {
+      const temperatureInput = wrapper.find('#temperature')
+      expect(temperatureInput.attributes('min')).toBe('180')
+      expect(temperatureInput.attributes('max')).toBe('280')
+      expect(temperatureInput.attributes('step')).toBe('5')
     })
-
-    await wrapper.find('.print-section button').trigger('click')
-
-    expect(mockSendToPrint).toHaveBeenCalledWith('/test/model.3mf', 'Test Model')
-  })
-
-  it('should emit printSent event when print is successful', async () => {
-    vi.mocked(useBambuConnect).mockReturnValue({
-      state: {
-        isConnectInstalled: true,
-        connectVersion: null,
-        isConnecting: false,
-        lastError: null
-      },
-      tempDir: { value: '/tmp/bambu-files' },
-      checkBambuConnect: mockCheckBambuConnect,
-      sendToPrint: mockSendToPrint,
-      discoverPrinters: vi.fn(),
-      getBambuConnectDownloadUrl: mockGetBambuConnectDownloadUrl,
-      detectPlatform: vi.fn()
-    })
-
-    const wrapper = mount(BambuConnector, {
-      props: {
-        modelUrl: '/test/model.3mf'
-      }
-    })
-
-    await wrapper.find('.print-section button').trigger('click')
-
-    expect(wrapper.emitted('printSent')).toBeTruthy()
-  })
-
-  it('should display status text correctly', () => {
-    const wrapper = mount(BambuConnector)
-
-    expect(wrapper.text()).toContain('Bambu Connect 未安装')
-  })
-
-  it('should display error message when there is an error', async () => {
-    vi.mocked(useBambuConnect).mockReturnValue({
-      state: {
-        isConnectInstalled: true,
-        connectVersion: null,
-        isConnecting: false,
-        lastError: '发送失败'
-      },
-      tempDir: { value: '/tmp/bambu-files' },
-      checkBambuConnect: mockCheckBambuConnect,
-      sendToPrint: mockSendToPrint,
-      discoverPrinters: vi.fn(),
-      getBambuConnectDownloadUrl: mockGetBambuConnectDownloadUrl,
-      detectPlatform: vi.fn()
-    })
-
-    const wrapper = mount(BambuConnector, {
-      props: {
-        modelUrl: '/test/model.3mf'
-      }
-    })
-
-    expect(wrapper.find('.error-message').exists()).toBe(true)
-    expect(wrapper.find('.error-message').text()).toContain('发送失败')
-  })
-
-  it('should disable print button when isConnecting is true', async () => {
-    vi.mocked(useBambuConnect).mockReturnValue({
-      state: {
-        isConnectInstalled: true,
-        connectVersion: null,
-        isConnecting: true,
-        lastError: null
-      },
-      tempDir: { value: '/tmp/bambu-files' },
-      checkBambuConnect: mockCheckBambuConnect,
-      sendToPrint: mockSendToPrint,
-      discoverPrinters: vi.fn(),
-      getBambuConnectDownloadUrl: mockGetBambuConnectDownloadUrl,
-      detectPlatform: vi.fn()
-    })
-
-    const wrapper = mount(BambuConnector, {
-      props: {
-        modelUrl: '/test/model.3mf'
-      }
-    })
-
-    const printButton = wrapper.find('.print-section button')
-    expect(printButton.attributes('disabled')).toBeDefined()
-  })
-
-  it('should disable print button when modelUrl is not provided', async () => {
-    vi.mocked(useBambuConnect).mockReturnValue({
-      state: {
-        isConnectInstalled: true,
-        connectVersion: null,
-        isConnecting: false,
-        lastError: null
-      },
-      tempDir: { value: '/tmp/bambu-files' },
-      checkBambuConnect: mockCheckBambuConnect,
-      sendToPrint: mockSendToPrint,
-      discoverPrinters: vi.fn(),
-      getBambuConnectDownloadUrl: mockGetBambuConnectDownloadUrl,
-      detectPlatform: vi.fn()
-    })
-
-    const wrapper = mount(BambuConnector)
-
-    const printButton = wrapper.find('.print-section button')
-    expect(printButton.attributes('disabled')).toBeDefined()
   })
 })

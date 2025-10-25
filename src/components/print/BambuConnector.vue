@@ -1,127 +1,226 @@
 <template>
-  <div class="bambu-connector p-6 bg-white rounded-lg shadow-md">
-    <div class="status-section mb-6">
-      <h3 class="text-xl font-semibold mb-4">
-        Bambu Connect 状态
-      </h3>
-      <div
-        class="status-indicator flex items-center p-4 rounded-lg"
-        :class="statusClass"
-      >
-        <div
-          class="status-icon w-3 h-3 rounded-full mr-3"
-          :class="statusIconClass"
-        />
-        <span class="font-medium">{{ statusText }}</span>
+  <Card>
+    <template #header>
+      <h2 class="text-xl font-semibold">
+        Bambu Connect
+      </h2>
+    </template>
+
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div
+            :class="[
+              'w-3 h-3 rounded-full',
+              connected ? 'bg-green-500' : 'bg-red-500',
+            ]"
+          />
+          <span class="text-sm font-medium">
+            {{ connected ? 'Connected' : 'Disconnected' }}
+          </span>
+        </div>
+
+        <Button
+          :disabled="isChecking"
+          @click="handleCheckConnection"
+        >
+          {{ isChecking ? 'Checking...' : 'Check Connection' }}
+        </Button>
       </div>
 
-      <button
-        v-if="!bambuState.isConnectInstalled"
-        class="mt-4 w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        @click="downloadBambuConnect"
+      <div
+        v-if="hasError"
+        class="p-3 bg-red-50 border border-red-200 rounded-md"
       >
-        下载 Bambu Connect
-      </button>
+        <p class="text-sm text-red-600">
+          {{ error }}
+        </p>
+      </div>
+
+      <div
+        v-if="connected && hasPrinters"
+        class="space-y-3"
+      >
+        <div>
+          <label
+            for="printer"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Select Printer
+          </label>
+          <select
+            id="printer"
+            v-model="selectedPrinter"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">
+              Choose a printer
+            </option>
+            <option
+              v-for="printer in printers"
+              :key="printer"
+              :value="printer"
+            >
+              {{ printer }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            for="material"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Material
+          </label>
+          <select
+            id="material"
+            v-model="settings.material"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="PLA">
+              PLA
+            </option>
+            <option value="ABS">
+              ABS
+            </option>
+            <option value="PETG">
+              PETG
+            </option>
+            <option value="TPU">
+              TPU
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            for="layerHeight"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Layer Height (mm)
+          </label>
+          <input
+            id="layerHeight"
+            v-model.number="settings.layerHeight"
+            type="number"
+            step="0.01"
+            min="0.1"
+            max="0.4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+
+        <div>
+          <label
+            for="infillDensity"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Infill Density (%)
+          </label>
+          <input
+            id="infillDensity"
+            v-model.number="settings.infillDensity"
+            type="number"
+            step="5"
+            min="0"
+            max="100"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+
+        <div class="flex items-center">
+          <input
+            id="supports"
+            v-model="settings.supports"
+            type="checkbox"
+            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          >
+          <label
+            for="supports"
+            class="ml-2 text-sm font-medium text-gray-700"
+          >
+            Enable Supports
+          </label>
+        </div>
+
+        <div>
+          <label
+            for="temperature"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Temperature (°C) <span class="text-gray-500">(Optional)</span>
+          </label>
+          <input
+            id="temperature"
+            v-model.number="settings.temperature"
+            type="number"
+            step="5"
+            min="180"
+            max="280"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+      </div>
     </div>
-
-    <div
-      v-if="bambuState.isConnectInstalled"
-      class="print-section"
-    >
-      <h3 class="text-xl font-semibold mb-4">
-        发送到打印机
-      </h3>
-      <button
-        :disabled="bambuState.isConnecting || !modelUrl"
-        class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-        @click="handleSendToPrint"
-      >
-        <span
-          v-if="bambuState.isConnecting"
-          class="animate-spin mr-2"
-        >⟳</span>
-        {{ bambuState.isConnecting ? '发送中...' : '发送到 Bambu Connect' }}
-      </button>
-
-      <div
-        v-if="bambuState.lastError"
-        class="error-message mt-4 p-3 bg-red-50 text-red-700 rounded-lg"
-      >
-        {{ bambuState.lastError }}
-      </div>
-
-      <div
-        v-if="successMessage"
-        class="success-message mt-4 p-3 bg-green-50 text-green-700 rounded-lg"
-      >
-        {{ successMessage }}
-      </div>
-    </div>
-  </div>
+  </Card>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useBambuConnect } from '@/composables/useBambuConnect'
-
-interface Props {
-  modelUrl?: string
-  modelName?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  modelName: '3D模型'
-})
+import Card from '@/components/ui/Card.vue'
+import Button from '@/components/ui/Button.vue'
+import type { PrintSettings } from '@/types/print'
 
 const emit = defineEmits<{
-  printSent: [result: { success: boolean; message: string }]
+  settingsChange: [settings: PrintSettings]
+  printerSelect: [printer: string]
 }>()
 
 const {
-  state: bambuState,
+  connected,
+  printers,
+  error,
+  isChecking,
+  hasPrinters,
+  hasError,
   checkBambuConnect,
-  sendToPrint,
-  getBambuConnectDownloadUrl
 } = useBambuConnect()
 
-const successMessage = ref('')
-
-const statusClass = computed(() => ({
-  'bg-green-50 border border-green-200': bambuState.isConnectInstalled,
-  'bg-red-50 border border-red-200': !bambuState.isConnectInstalled,
-  'bg-yellow-50 border border-yellow-200': bambuState.isConnecting
-}))
-
-const statusIconClass = computed(() => ({
-  'bg-green-500': bambuState.isConnectInstalled,
-  'bg-red-500': !bambuState.isConnectInstalled,
-  'bg-yellow-500': bambuState.isConnecting
-}))
-
-const statusText = computed(() => {
-  if (bambuState.isConnecting) return '检测中...'
-  return bambuState.isConnectInstalled ? 'Bambu Connect 已安装' : 'Bambu Connect 未安装'
+const selectedPrinter = ref<string>('')
+const settings = ref<Omit<PrintSettings, 'printer'>>({
+  material: 'PLA',
+  layerHeight: 0.2,
+  infillDensity: 20,
+  supports: false,
+  temperature: undefined,
 })
 
-const downloadBambuConnect = () => {
-  const downloadUrl = getBambuConnectDownloadUrl()
-  window.open(downloadUrl, '_blank')
+const handleCheckConnection = async () => {
+  await checkBambuConnect()
 }
 
-const handleSendToPrint = async () => {
-  if (!props.modelUrl) return
-
-  successMessage.value = ''
-
-  const result = await sendToPrint(props.modelUrl, props.modelName)
-
-  if (result.success) {
-    successMessage.value = result.message
-    emit('printSent', result)
+watch(selectedPrinter, (newPrinter) => {
+  if (newPrinter) {
+    emit('printerSelect', newPrinter)
+    emit('settingsChange', {
+      printer: newPrinter,
+      ...settings.value,
+    })
   }
-}
-
-onMounted(() => {
-  checkBambuConnect()
 })
+
+watch(
+  settings,
+  (newSettings) => {
+    if (selectedPrinter.value) {
+      emit('settingsChange', {
+        printer: selectedPrinter.value,
+        ...newSettings,
+      })
+    }
+  },
+  { deep: true }
+)
 </script>
