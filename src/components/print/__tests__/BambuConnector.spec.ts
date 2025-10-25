@@ -1,23 +1,41 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
 import { mount, VueWrapper } from '@vue/test-utils'
+import { ref, computed } from 'vue'
 import BambuConnector from '../BambuConnector.vue'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
 
+let mockConnected = ref(false)
+let mockPrinters = ref<string[]>([])
+let mockError = ref<string | null>(null)
+let mockIsChecking = ref(false)
+
 vi.mock('@/composables/useBambuConnect', () => ({
-  useBambuConnect: () => ({
-    connected: { value: false },
-    printers: { value: [] },
-    error: { value: null },
-    isChecking: { value: false },
-    hasPrinters: { value: false },
-    hasError: { value: false },
-    checkBambuConnect: vi.fn().mockResolvedValue(true),
-  }),
+  useBambuConnect: () => {
+    const hasPrinters = computed(() => mockPrinters.value.length > 0)
+    const hasError = computed(() => mockError.value !== null)
+    
+    return {
+      connected: mockConnected,
+      printers: mockPrinters,
+      error: mockError,
+      isChecking: mockIsChecking,
+      hasPrinters,
+      hasError,
+      checkBambuConnect: vi.fn().mockResolvedValue(true),
+    }
+  },
 }))
 
 describe('BambuConnector', () => {
   let wrapper: VueWrapper<InstanceType<typeof BambuConnector>>
+
+  beforeEach(() => {
+    mockConnected.value = false
+    mockPrinters.value = []
+    mockError.value = null
+    mockIsChecking.value = false
+  })
 
   afterEach(() => {
     if (wrapper) {
@@ -87,6 +105,11 @@ describe('BambuConnector', () => {
   })
 
   describe('Print Settings Form', () => {
+    beforeEach(() => {
+      mockConnected.value = true
+      mockPrinters.value = ['Bambu Lab X1 Carbon']
+    })
+
     it('should render material select', () => {
       wrapper = mount(BambuConnector, {
         global: {
@@ -159,6 +182,11 @@ describe('BambuConnector', () => {
   })
 
   describe('Material Options', () => {
+    beforeEach(() => {
+      mockConnected.value = true
+      mockPrinters.value = ['Bambu Lab X1 Carbon']
+    })
+
     it('should have PLA option', () => {
       wrapper = mount(BambuConnector, {
         global: {
@@ -226,6 +254,9 @@ describe('BambuConnector', () => {
 
   describe('Input Validation', () => {
     beforeEach(() => {
+      mockConnected.value = true
+      mockPrinters.value = ['Bambu Lab X1 Carbon']
+      
       wrapper = mount(BambuConnector, {
         global: {
           components: {
