@@ -109,6 +109,8 @@ pnpm install
 
 **重要**: 后端服务与前端是分离的项目,运行在独立的服务器上。
 
+#### 前端配置
+
 1. 复制环境变量配置文件:
 ```bash
 cp .env.example .env
@@ -121,6 +123,20 @@ VITE_API_BASE_URL=http://localhost:3000
 
 # 生产环境示例
 VITE_API_BASE_URL=https://api.yourdomain.com
+```
+
+#### 后端运行要求
+
+**认证后端服务需要使用 Bun 运行时:**
+
+```bash
+# 安装 Bun (如果尚未安装)
+curl -fsSL https://bun.sh/install | bash
+
+# 启动认证服务器
+npm run auth-server
+# 或直接运行
+bun auth-server.js
 ```
 
 详细的后端配置说明请参考 [认证后端文档](./docs/AUTH_README.md)

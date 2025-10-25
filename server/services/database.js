@@ -2,7 +2,7 @@
  * 数据库服务（SQLite 实现）
  * 
  * 使用 SQLite 作为持久化存储
- * 支持 Node.js 和 Bun 运行时
+ * 仅支持 Bun 运行时（使用 bun:sqlite）
  * 
  * 生产环境建议：
  * - PostgreSQL：使用 pg 或 Sequelize
@@ -10,7 +10,7 @@
  * - MongoDB：使用 mongoose
  */
 
-import Database from 'better-sqlite3'
+import { Database } from 'bun:sqlite'
 import crypto from 'crypto'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
