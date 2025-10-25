@@ -383,7 +383,7 @@ const handleTaskCompletion = async (status: MeshyTaskStatus, mode: 'text' | 'ima
   }
 
   // 使用代理 URL 避免 CORS 问题
-  const proxiedUrl = meshyClient.getProxiedAssetUrl(modelUrl)
+  const proxiedUrl = await meshyClient.getProxiedAssetUrl(modelUrl)
 
   const newModel: Model3D = {
     id: status.id,

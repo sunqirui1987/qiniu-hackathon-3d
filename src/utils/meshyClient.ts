@@ -447,24 +447,80 @@ export class MeshyClient {
   }
 
   /**
-   * 将 Meshy 资源 URL 转换为通过服务器代理的 URL
-   * 这样可以避免 CORS 问题
+   * 将 Meshy 资源 URL 转换为通过服务器代理的缓存 URL
+   * 这样可以避免 CORS 问题并利用本地缓存
    */
-  getProxiedAssetUrl(meshyUrl: string): string {
-    if (!meshyUrl || !meshyUrl.includes('assets.meshy.ai')) {
+  async getProxiedAssetUrl(meshyUrl: string): Promise<string> {
+    if (!meshyUrl || typeof meshyUrl !== 'string') {
+      console.warn('[MeshyClient] Invalid URL provided:', meshyUrl)
+      return meshyUrl
+    }
+
+    // 验证URL格式
+    try {
+      new URL(meshyUrl)
+    } catch (error) {
+      console.warn('[MeshyClient] Invalid URL format:', meshyUrl)
+      return meshyUrl
+    }
+
+    // 检查是否是Meshy资源URL或AWS S3 URL
+    const isMeshyAsset = meshyUrl.includes('assets.meshy.ai') || 
+                        meshyUrl.includes('amazonaws.com') ||
+                        meshyUrl.includes('s3.amazonaws.com')
+    
+    if (!isMeshyAsset) {
+      console.log('[MeshyClient] URL does not need proxying:', meshyUrl)
       return meshyUrl
     }
     
-    // 构建代理 URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
-    const proxyUrl = `${baseUrl}/api/meshy/proxy-asset?url=${encodeURIComponent(meshyUrl)}`
-    
-    console.log('[MeshyClient] Converting URL to proxy:', {
-      original: meshyUrl,
-      proxied: proxyUrl
-    })
-    
-    return proxyUrl
+    try {
+      // 构建代理 URL
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
+      const proxyUrl = `${baseUrl}/api/meshy/proxy-asset?url=${encodeURIComponent(meshyUrl)}`
+      
+      console.log('[MeshyClient] Requesting cached asset URL:', {
+        original: meshyUrl,
+        proxyEndpoint: proxyUrl
+      })
+      
+      // 请求代理服务器获取缓存文件URL
+      const authToken = localStorage.getItem('auth_token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`
+      }
+      
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers
+      })
+      
+      if (!response.ok) {
+        console.error('[MeshyClient] Failed to get cached asset URL:', response.status, response.statusText)
+        return meshyUrl // 回退到原始URL
+      }
+      
+      const data = await response.json()
+      
+      if (data.cachedUrl) {
+        console.log('[MeshyClient] Got cached asset URL:', {
+          original: meshyUrl,
+          cached: data.cachedUrl
+        })
+        return data.cachedUrl
+      } else {
+        console.warn('[MeshyClient] No cached URL in response:', data)
+        return meshyUrl
+      }
+      
+    } catch (error) {
+      console.error('[MeshyClient] Error getting cached asset URL:', error)
+      return meshyUrl // 回退到原始URL
+    }
   }
 }
 

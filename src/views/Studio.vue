@@ -270,7 +270,7 @@ const handleViewerError = (error: string) => {
   showNotification(error, 'error')
 }
 
-const loadHistoryItem = (item: any) => {
+const loadHistoryItem = async (item: any) => {
   // 处理Meshy API格式的模型URL
   let modelUrl = ''
   
@@ -284,10 +284,15 @@ const loadHistoryItem = (item: any) => {
   }
   
   if (modelUrl) {
-    // 使用代理 URL 避免 CORS 问题
-    const proxiedUrl = meshyClient.getProxiedAssetUrl(modelUrl)
-    currentModel.value = proxiedUrl
-    showNotification('历史模型加载成功！', 'success')
+    try {
+      // 使用代理 URL 避免 CORS 问题
+      const proxiedUrl = await meshyClient.getProxiedAssetUrl(modelUrl)
+      currentModel.value = proxiedUrl
+      showNotification('历史模型加载成功！', 'success')
+    } catch (error) {
+      console.error('Failed to get proxied URL:', error)
+      showNotification('模型加载失败', 'error')
+    }
   } else {
     showNotification('该任务暂无可用的模型文件', 'error')
   }

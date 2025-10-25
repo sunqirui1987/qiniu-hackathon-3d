@@ -68,14 +68,14 @@ export function useMeshyTask(apiKey: string) {
   ): Promise<MeshyTaskStatus> => {
     const status = await client.getTaskStatus(taskId)
     
-    updateTask(taskId, status)
+    await updateTask(taskId, status)
     
     return status
   }
 
   const pollTask = async (
     taskId: string,
-    type?: 'text-to-3d' | 'image-to-3d', // type 参数现在是可选的
+    type: 'text-to-3d' | 'image-to-3d', // type 参数现在是必需的
     options?: {
       maxAttempts?: number
       pollInterval?: number
@@ -84,16 +84,17 @@ export function useMeshyTask(apiKey: string) {
   ): Promise<MeshyTaskStatus> => {
     const finalStatus = await client.pollTaskUntilComplete(
       taskId,
+      type,
       {
         ...options,
-        onProgress: (progress: number, status: MeshyTaskStatus) => {
-          updateTask(taskId, status)
+        onProgress: async (progress: number, status: MeshyTaskStatus) => {
+          await updateTask(taskId, status)
           options?.onProgress?.(progress, status)
         },
       }
     )
     
-    updateTask(taskId, finalStatus)
+    await updateTask(taskId, finalStatus)
     
     return finalStatus
   }
@@ -131,7 +132,7 @@ export function useMeshyTask(apiKey: string) {
     currentTaskId.value = null
   }
 
-  const updateTask = (taskId: string, status: MeshyTaskStatus) => {
+  const updateTask = async (taskId: string, status: MeshyTaskStatus) => {
     const task = tasks.value.get(taskId)
     if (!task) return
     
@@ -141,14 +142,14 @@ export function useMeshyTask(apiKey: string) {
     task.finishedAt = status.finished_at ? new Date(status.finished_at) : undefined
     
     if (status.status === 'SUCCEEDED' && status.model_urls) {
-      task.result = convertTaskToModel(status)
+      task.result = await convertTaskToModel(status)
     }
   }
 
-  const convertTaskToModel = (taskStatus: MeshyTaskStatus): Model3D => {
+  const convertTaskToModel = async (taskStatus: MeshyTaskStatus): Promise<Model3D> => {
     const url = taskStatus.model_urls?.glb || taskStatus.model_urls?.obj || ''
     // 使用代理 URL 避免 CORS 问题
-    const proxiedUrl = meshyClient.getProxiedAssetUrl(url)
+    const proxiedUrl = await meshyClient.getProxiedAssetUrl(url)
     
     return {
       id: taskStatus.id,

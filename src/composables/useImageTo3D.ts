@@ -95,7 +95,7 @@ export function useImageTo3D() {
       )
 
       const imageName = options.image instanceof File ? options.image.name : 'image-to-3d'
-      const model = convertTaskToModel(taskStatus, imageName)
+      const model = await convertTaskToModel(taskStatus, imageName)
       result.value = model
       status.value = 'completed'
       progress.value = 100
@@ -135,10 +135,10 @@ export function useImageTo3D() {
     retryCount.value = 0
   }
 
-  const convertTaskToModel = (taskStatus: MeshyTaskStatus, imageName: string): Model3D => {
+  const convertTaskToModel = async (taskStatus: MeshyTaskStatus, imageName: string): Promise<Model3D> => {
     const url = taskStatus.model_urls?.glb || taskStatus.model_urls?.obj || ''
     // 使用代理 URL 避免 CORS 问题
-    const proxiedUrl = meshyClient.getProxiedAssetUrl(url)
+    const proxiedUrl = await meshyClient.getProxiedAssetUrl(url)
     const name = imageName.replace(/\.[^/.]+$/, '')
     
     return {

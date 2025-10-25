@@ -94,9 +94,41 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     }
   }
 
-  const loadModel = async (url: string, _fileName?: string): Promise<void> => {
+  const loadModel = async (url: string, fileName?: string): Promise<void> => {
     if (!scene.value) {
       throw new Error('Scene not initialized. Call initViewer() first.')
+    }
+
+    // 验证URL格式
+    if (!url || typeof url !== 'string') {
+      const errorMessage = 'Invalid model URL provided'
+      loadError.value = errorMessage
+      throw new Error(errorMessage)
+    }
+
+    // 检查URL是否为有效的3D模型文件
+    const supportedExtensions = ['.glb', '.gltf', '.fbx', '.obj', '.stl', '.babylon']
+    const urlLower = url.toLowerCase()
+    
+    // 更精确的文件扩展名检测
+    const getFileExtension = (url: string): string => {
+      // 移除查询参数和片段
+      const cleanUrl = url.split('?')[0].split('#')[0]
+      const lastDotIndex = cleanUrl.lastIndexOf('.')
+      if (lastDotIndex === -1) return ''
+      return cleanUrl.substring(lastDotIndex).toLowerCase()
+    }
+    
+    const fileExtension = getFileExtension(url)
+    const isValidExtension = supportedExtensions.includes(fileExtension) || 
+                           urlLower.includes('proxy-asset') ||
+                           urlLower.includes('blob:') ||
+                           urlLower.includes('data:')
+
+    if (!isValidExtension) {
+      const errorMessage = `Unsupported file format. Supported formats: ${supportedExtensions.join(', ')}. Detected extension: ${fileExtension || 'none'}`
+      loadError.value = errorMessage
+      throw new Error(errorMessage)
     }
 
     isLoading.value = true
@@ -108,6 +140,9 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
         currentModel.value = null
       }
 
+      console.log('[3DViewer] Loading model from URL:', url)
+
+      // 使用标准的SceneLoader加载模型
       const result: ISceneLoaderAsyncResult = await SceneLoader.ImportMeshAsync(
         '',
         '',
@@ -115,21 +150,61 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
         scene.value
       )
 
-      if (result.meshes.length > 0) {
-        const rootMesh = result.meshes[0]
-        currentModel.value = rootMesh
-
-        frameModel(rootMesh)
-        
-        updateModelInfo(result.meshes)
+      if (!result || !result.meshes || result.meshes.length === 0) {
+        throw new Error('No meshes found in the model file. The file may be empty or corrupted.')
       }
+
+      const rootMesh = result.meshes[0]
+      currentModel.value = rootMesh
+
+      frameModel(rootMesh)
+      updateModelInfo(result.meshes)
+
+      console.log('[3DViewer] Model loaded successfully:', {
+        meshCount: result.meshes.length,
+        vertices: result.meshes.reduce((total, mesh) => {
+          return total + ('getTotalVertices' in mesh ? (mesh as Mesh).getTotalVertices() : 0)
+        }, 0)
+      })
 
       isLoading.value = false
     } catch (error) {
       isLoading.value = false
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load model'
+      
+      let errorMessage = 'Failed to load model'
+      
+      if (error instanceof Error) {
+        // 处理特定的错误类型
+        if (error.message.includes('JSON parse') || error.message.includes('Unexpected token')) {
+          errorMessage = 'Invalid GLB/GLTF file format. The file may be corrupted, incomplete, or not a valid 3D model.'
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          errorMessage = 'Network error: Unable to download the model file. Please check your internet connection and try again.'
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Request timeout: The model file is taking too long to download. Please try again or use a smaller file.'
+        } else if (error.message.includes('404') || error.message.includes('Not Found')) {
+          errorMessage = 'Model file not found. The URL may be invalid or the file may have been removed.'
+        } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          errorMessage = 'Access denied: You do not have permission to access this model file.'
+        } else if (error.message.includes('415') || error.message.includes('Unsupported Media Type')) {
+          errorMessage = 'Unsupported file type: The file is not a valid 3D model format.'
+        } else if (error.message.includes('CORS')) {
+          errorMessage = 'CORS error: The server does not allow cross-origin requests. Please check the file URL or server configuration.'
+        } else if (error.message.includes('No meshes found')) {
+          errorMessage = error.message
+        } else {
+          errorMessage = `Loading error: ${error.message}`
+        }
+      }
+      
+      console.error('[3DViewer] Model loading failed:', {
+        url,
+        fileName,
+        error: errorMessage,
+        originalError: error
+      })
+      
       loadError.value = errorMessage
-      throw new Error(`Failed to load model: ${errorMessage}`)
+      throw new Error(errorMessage)
     }
   }
 

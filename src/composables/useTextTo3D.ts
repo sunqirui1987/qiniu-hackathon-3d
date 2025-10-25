@@ -71,6 +71,7 @@ export function useTextTo3D(apiKey?: string) {
       // 等待任务完成
       const taskStatus = await client.pollTaskUntilComplete(
         taskResponse.result,
+        'text-to-3d',
         {
           onProgress: (taskProgress: number) => {
             progress.value = taskProgress
@@ -80,16 +81,16 @@ export function useTextTo3D(apiKey?: string) {
 
       // 如果需要纹理，创建纹理任务
       if (options.enablePBR || options.texturePrompt) {
-        const textureResponse = await client.createTexture({
-          parent: taskStatus.id,
-          prompt: options.texturePrompt,
-          art_style: options.artStyle,
+        const textureResponse = await client.createRetexture({
+          input_task_id: taskStatus.id,
+          text_style_prompt: options.texturePrompt,
           enable_pbr: options.enablePBR,
         })
         refineTaskId.value = textureResponse.result
 
         const textureStatus = await client.pollTaskUntilComplete(
           textureResponse.result,
+          'retexture',
           {
             onProgress: (taskProgress: number) => {
               progress.value = 50 + taskProgress * 0.5
@@ -97,13 +98,13 @@ export function useTextTo3D(apiKey?: string) {
           }
         )
 
-        const model = convertTaskToModel(textureStatus, options.prompt)
+        const model = await convertTaskToModel(textureStatus, options.prompt)
         result.value = model
         status.value = 'completed'
         progress.value = 100
         return model
       } else {
-        const model = convertTaskToModel(taskStatus, options.prompt)
+        const model = await convertTaskToModel(taskStatus, options.prompt)
         result.value = model
         status.value = 'completed'
         progress.value = 100
@@ -146,10 +147,10 @@ export function useTextTo3D(apiKey?: string) {
     retryCount.value = 0
   }
 
-  const convertTaskToModel = (taskStatus: MeshyTaskStatus, prompt: string): Model3D => {
+  const convertTaskToModel = async (taskStatus: MeshyTaskStatus, prompt: string): Promise<Model3D> => {
     const url = taskStatus.model_urls?.glb || taskStatus.model_urls?.obj || ''
     // 使用代理 URL 避免 CORS 问题
-    const proxiedUrl = meshyClient.getProxiedAssetUrl(url)
+    const proxiedUrl = await meshyClient.getProxiedAssetUrl(url)
     
     return {
       id: taskStatus.id,
