@@ -75,10 +75,10 @@ export class MeshyClient {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey
+    const serverBaseUrl = import.meta.env.VITE_AUTH_SERVER_URL || 'http://localhost:3001'
     this.client = axios.create({
-      baseURL: 'https://api.meshy.ai',
+      baseURL: `${serverBaseUrl}/api/meshy`,
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       timeout: 30000,
