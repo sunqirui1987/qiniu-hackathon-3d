@@ -6,7 +6,6 @@ import {
   HemisphericLight,
   Vector3,
   SceneLoader,
-  STLExport,
   type AbstractMesh,
   type Camera,
   Color4,
@@ -15,7 +14,7 @@ import {
 import '@babylonjs/loaders/glTF'
 import '@babylonjs/loaders/STL'
 import '@babylonjs/loaders/OBJ'
-import { GLTF2Export } from '@babylonjs/serializers'
+import { GLTF2Export, STLExport } from '@babylonjs/serializers'
 
 export interface Use3DViewerOptions {
   canvasRef: Ref<HTMLCanvasElement | null>

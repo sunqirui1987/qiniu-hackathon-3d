@@ -61,6 +61,9 @@ vi.mock('@babylonjs/serializers', () => ({
   GLTF2Export: {
     GLBAsync: vi.fn(),
   },
+  STLExport: {
+    CreateSTL: vi.fn(),
+  },
 }))
 
 describe('use3DViewer', () => {
@@ -240,12 +243,14 @@ describe('use3DViewer', () => {
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
       })
-      vi.mocked(STLExport.CreateSTL).mockReturnValue('STL_DATA')
+      
+      const { STLExport: mockSTLExport } = await import('@babylonjs/serializers')
+      vi.mocked(mockSTLExport.CreateSTL).mockReturnValue('STL_DATA')
 
       await loadModel('test.glb')
       const blob = await exportSTL()
 
-      expect(STLExport.CreateSTL).toHaveBeenCalledWith([mockMesh], true, 'testModel')
+      expect(mockSTLExport.CreateSTL).toHaveBeenCalledWith([mockMesh], true, 'testModel')
       expect(blob).toBeInstanceOf(Blob)
       expect(blob?.type).toBe('application/octet-stream')
     })
@@ -265,7 +270,9 @@ describe('use3DViewer', () => {
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
       })
-      vi.mocked(STLExport.CreateSTL).mockImplementation(() => {
+      
+      const { STLExport: mockSTLExport } = await import('@babylonjs/serializers')
+      vi.mocked(mockSTLExport.CreateSTL).mockImplementation(() => {
         throw new Error('Export failed')
       })
 
