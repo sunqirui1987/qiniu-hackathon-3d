@@ -1,7 +1,7 @@
 <template>
-  <div class="left-tab-panel w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+  <div class="left-tab-panel w-80 bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700 flex flex-col">
     <!-- Tab标签栏 -->
-    <div class="tab-header flex border-b border-gray-700">
+    <div class="tab-header flex border-b border-gray-300 dark:border-gray-700">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -9,8 +9,8 @@
         :class="[
           'flex-1 py-3 px-4 text-sm font-medium transition-colors border-b-2',
           activeTab === tab.id
-            ? 'text-blue-400 border-blue-400 bg-gray-750'
-            : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-750'
+            ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-gray-200 dark:bg-gray-750'
+            : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-750'
         ]"
       >
         <div class="flex items-center justify-center gap-2">
@@ -25,27 +25,27 @@
       <!-- 文生3D面板 -->
       <div v-if="activeTab === 'text-to-3d'" class="p-6 space-y-6">
         <div>
-          <h3 class="text-lg font-semibold mb-4 text-white">文本生成3D模型</h3>
+          <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">文本生成3D模型</h3>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">描述文本</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">描述文本</label>
               <textarea
                 :value="textPrompt"
                 @input="$emit('update:textPrompt', $event.target.value)"
                 placeholder="描述你想要生成的3D模型，例如：一只可爱的小猫咪..."
-                class="w-full h-32 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none resize-none"
+                class="w-full h-32 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 focus:outline-none resize-none"
               ></textarea>
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">生成参数</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">生成参数</label>
               <div class="space-y-3">
                 <div>
-                  <label class="block text-xs text-gray-400 mb-1">质量等级</label>
+                  <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">质量等级</label>
                   <select 
                     :value="textOptions.quality" 
                     @change="$emit('update:textOptions', { ...textOptions, quality: $event.target.value })"
-                    class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                    class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm"
                   >
                     <option value="draft">草图 (快速)</option>
                     <option value="standard">标准</option>
@@ -53,11 +53,11 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-xs text-gray-400 mb-1">风格</label>
+                  <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">风格</label>
                   <select 
                     :value="textOptions.style" 
                     @change="$emit('update:textOptions', { ...textOptions, style: $event.target.value })"
-                    class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                    class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm"
                   >
                     <option value="realistic">写实</option>
                     <option value="cartoon">卡通</option>
@@ -77,13 +77,13 @@
 
             <!-- 生成进度 -->
             <div v-if="isGenerating && activeTab === 'text-to-3d'" class="space-y-3">
-              <div class="w-full bg-gray-700 rounded-full h-2">
+              <div class="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2">
                 <div 
                   class="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   :style="{ width: `${generationProgress}%` }"
                 ></div>
               </div>
-              <p class="text-sm text-gray-400 text-center">{{ generationStatus }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400 text-center">{{ generationStatus }}</p>
             </div>
           </div>
         </div>
@@ -92,11 +92,11 @@
       <!-- 图生3D面板 -->
       <div v-if="activeTab === 'image-to-3d'" class="p-6 space-y-6">
         <div>
-          <h3 class="text-lg font-semibold mb-4 text-white">图片生成3D模型</h3>
+          <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">图片生成3D模型</h3>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">上传图片</label>
-              <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 transition-colors">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">上传图片</label>
+              <div class="border-2 border-dashed border-gray-400 dark:border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 dark:hover:border-gray-500 transition-colors">
                 <input
                   type="file"
                   ref="imageInput"
@@ -122,16 +122,16 @@
                   </div>
                 </div>
                 <div v-else class="space-y-2">
-                  <svg class="w-12 h-12 text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <button
                     @click="$refs.imageInput?.click()"
-                    class="text-blue-400 hover:text-blue-300 font-medium"
+                    class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                   >
                     点击上传图片
                   </button>
-                  <p class="text-xs text-gray-500">支持 JPG、PNG、GIF 格式</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-500">支持 JPG、PNG、GIF 格式</p>
                 </div>
               </div>
             </div>

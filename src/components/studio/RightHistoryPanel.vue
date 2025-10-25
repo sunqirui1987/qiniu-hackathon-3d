@@ -1,12 +1,12 @@
 <template>
-  <div class="right-history-panel w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
+  <div class="right-history-panel w-80 bg-gray-100 dark:bg-gray-800 border-l border-gray-300 dark:border-gray-700 flex flex-col">
     <!-- 标题栏 -->
-    <div class="header p-4 border-b border-gray-700">
+    <div class="header p-4 border-b border-gray-300 dark:border-gray-700">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-white">生成历史</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">生成历史</h3>
         <button
           @click="$emit('clear-history')"
-          class="text-gray-400 hover:text-red-400 transition-colors"
+          class="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           title="清空历史"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -16,7 +16,7 @@
       </div>
 
       <!-- 筛选器 -->
-      <div class="filter-tabs flex bg-gray-700 rounded-lg p-1">
+      <div class="filter-tabs flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
         <button
           v-for="filter in filters"
           :key="filter.id"
@@ -25,7 +25,7 @@
             'flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors',
             activeFilter === filter.id
               ? 'bg-blue-600 text-white'
-              : 'text-gray-300 hover:text-white hover:bg-gray-600'
+              : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
           ]"
         >
           {{ filter.name }}
@@ -36,10 +36,10 @@
     <!-- 历史列表 -->
     <div class="history-list flex-1 overflow-y-auto p-4">
       <div v-if="filteredHistory.length === 0" class="empty-state text-center py-12">
-        <svg class="w-16 h-16 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
-        <p class="text-gray-500 text-sm">暂无生成历史</p>
+        <p class="text-gray-500 dark:text-gray-500 text-sm">暂无生成历史</p>
       </div>
 
       <div v-else class="space-y-3">
@@ -47,11 +47,11 @@
           v-for="item in filteredHistory"
           :key="item.id"
           @click="$emit('load-history-item', item)"
-          class="history-item bg-gray-750 rounded-lg p-4 border border-gray-600 hover:border-gray-500 cursor-pointer transition-all hover:bg-gray-700"
+          class="history-item bg-white dark:bg-gray-750 rounded-lg p-4 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           <!-- 缩略图和基本信息 -->
           <div class="flex gap-3 mb-3">
-            <div class="thumbnail w-16 h-16 bg-gray-600 rounded-lg overflow-hidden flex-shrink-0">
+            <div class="thumbnail w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-lg overflow-hidden flex-shrink-0">
               <img
                 v-if="item.thumbnail"
                 :src="item.thumbnail"
@@ -59,15 +59,15 @@
                 class="w-full h-full object-cover"
               >
               <div v-else class="w-full h-full flex items-center justify-center">
-                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-8 h-8 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
             </div>
 
             <div class="flex-1 min-w-0">
-              <h4 class="text-sm font-medium text-white truncate mb-1">{{ item.name }}</h4>
-              <p class="text-xs text-gray-400 mb-2">{{ formatDate(item.createdAt) }}</p>
+              <h4 class="text-sm font-medium text-gray-900 dark:text-white truncate mb-1">{{ item.name }}</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ formatDate(item.createdAt) }}</p>
               
               <!-- 状态标签 -->
               <div class="flex items-center gap-2">
@@ -93,29 +93,29 @@
 
           <!-- 详细信息 -->
           <div class="details space-y-2">
-            <div v-if="item.prompt" class="text-xs text-gray-300 line-clamp-2">
-              <span class="text-gray-500">提示词:</span> {{ item.prompt }}
+            <div v-if="item.prompt" class="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
+              <span class="text-gray-500 dark:text-gray-500">提示词:</span> {{ item.prompt }}
             </div>
             
-            <div class="flex items-center justify-between text-xs text-gray-400">
+            <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
               <span>{{ item.modelInfo?.faces || 'N/A' }} 面</span>
               <span>{{ formatFileSize(item.fileSize) }}</span>
             </div>
 
             <!-- 进度条（仅在生成中显示） -->
             <div v-if="item.status === 'generating'" class="progress mt-2">
-              <div class="w-full bg-gray-600 rounded-full h-1.5">
+              <div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-1.5">
                 <div 
                   class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                   :style="{ width: `${item.progress || 0}%` }"
                 ></div>
               </div>
-              <p class="text-xs text-gray-400 mt-1">{{ item.progressText || '生成中...' }}</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ item.progressText || '生成中...' }}</p>
             </div>
           </div>
 
           <!-- 操作按钮 -->
-          <div class="actions flex gap-2 mt-3 pt-3 border-t border-gray-600">
+          <div class="actions flex gap-2 mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
             <button
               v-if="item.status === 'completed'"
               @click.stop="$emit('download-model', item)"
@@ -132,7 +132,7 @@
             </button>
             <button
               @click.stop="$emit('delete-history-item', item)"
-              class="py-1.5 px-3 text-xs text-red-400 hover:text-red-300 border border-red-400 hover:bg-red-400/10 rounded transition-colors"
+              class="py-1.5 px-3 text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 border border-red-500 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded transition-colors"
             >
               删除
             </button>
@@ -142,8 +142,8 @@
     </div>
 
     <!-- 底部统计信息 -->
-    <div class="footer p-4 border-t border-gray-700 bg-gray-750">
-      <div class="text-xs text-gray-400 space-y-1">
+    <div class="footer p-4 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+      <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
         <div class="flex justify-between">
           <span>总计:</span>
           <span>{{ history.length }} 个项目</span>
