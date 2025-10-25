@@ -21,6 +21,7 @@ import cors from 'cors'
 import crypto from 'crypto'
 import { config } from './server/config/env.js'
 import { authRouter } from './server/routes/auth.js'
+import { meshyRouter } from './server/routes/meshy.js'
 import { errorHandler } from './server/middleware/errorHandler.js'
 import { securityMiddleware } from './server/middleware/security.js'
 
@@ -64,6 +65,9 @@ app.get('/health', (req, res) => {
 
 // 挂载认证路由
 app.use('/api/auth', authRouter)
+
+// 挂载 Meshy API 代理路由
+app.use('/api/meshy', meshyRouter)
 
 // 处理 404 错误
 app.use((req, res, next) => {
