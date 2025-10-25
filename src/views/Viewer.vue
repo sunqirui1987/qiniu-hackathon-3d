@@ -92,6 +92,19 @@
           :has-model="!!modelInfo"
           @export="handleExport"
         />
+        
+        <div class="bg-white rounded-lg shadow-md p-4">
+          <h3 class="text-lg font-semibold mb-3">
+            打印
+          </h3>
+          <button
+            class="w-full px-4 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="!modelInfo"
+            @click="handleSendToPrint"
+          >
+            发送到打印机
+          </button>
+        </div>
       </div>
     </div>
 
@@ -161,13 +174,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useModelStore } from '@/stores/model'
 import Babylon3DViewer from '@/components/3d/Babylon3DViewer.vue'
 import ModelControls from '@/components/3d/ModelControls.vue'
 import PropertyPanel from '@/components/3d/PropertyPanel.vue'
 import FileImport from '@/components/3d/FileImport.vue'
 import ExportPanel from '@/components/3d/ExportPanel.vue'
 import type { ModelInfo } from '@/composables/use3DViewer'
+
+const route = useRoute()
+const router = useRouter()
+const modelStore = useModelStore()
 
 const viewerRef = ref<InstanceType<typeof Babylon3DViewer> | null>(null)
 const currentModelUrl = ref<string>('')
@@ -305,4 +324,36 @@ const downloadBlob = (blob: Blob, fileName: string, extension: string) => {
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 }
+
+const handleSendToPrint = () => {
+  const modelId = route.query.modelId as string || route.query.id as string
+  if (modelId) {
+    router.push({
+      name: 'print',
+      query: { modelId }
+    })
+  } else {
+    showNotification('error', '无法打印', '请先加载一个模型')
+  }
+}
+
+onMounted(async () => {
+  const modelId = route.query.modelId as string || route.query.id as string
+  if (modelId) {
+    const model = modelStore.getModelById(modelId)
+    const modelUrl = model?.url || '/demo-model.glb'
+    const modelName = model?.name || `model-${modelId}.glb`
+    
+    currentModelUrl.value = modelUrl
+    
+    if (viewerRef.value) {
+      try {
+        await viewerRef.value.loadModel(modelUrl, modelName)
+        showNotification('success', '加载成功', `模型 "${modelName}" 已成功加载`)
+      } catch (error) {
+        showNotification('error', '加载失败', error instanceof Error ? error.message : '未知错误')
+      }
+    }
+  }
+})
 </script>

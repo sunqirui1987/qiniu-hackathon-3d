@@ -160,10 +160,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useModelStore } from '@/stores/model'
 import TextInput from '../components/forms/TextInput.vue'
 import ImageUpload from '../components/forms/ImageUpload.vue'
 import GenerateProgress from '../components/generate/GenerateProgress.vue'
 import type { Model3D } from '../types/model'
+
+const modelStore = useModelStore()
 
 type GenerationMode = 'text' | 'image'
 
@@ -287,6 +290,14 @@ const generateFromText = async () => {
     }
     
     generationHistory.value.unshift(newModel)
+    modelStore.addModel(newModel)
+    
+    setTimeout(() => {
+      router.push({
+        name: 'viewer',
+        query: { modelId: newModel.id, fromGenerate: 'true' }
+      })
+    }, 1500)
   }, 5000)
 }
 
@@ -331,6 +342,14 @@ const generateFromImage = async () => {
     }
     
     generationHistory.value.unshift(newModel)
+    modelStore.addModel(newModel)
+    
+    setTimeout(() => {
+      router.push({
+        name: 'viewer',
+        query: { modelId: newModel.id, fromGenerate: 'true' }
+      })
+    }, 1500)
   }, 5000)
 }
 

@@ -121,6 +121,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useModelStore } from '@/stores/model'
 import { type ModelFile } from '@/types/model'
 import ModelLibrary from '@/components/library/ModelLibrary.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -129,6 +130,7 @@ import { useBatchOperations } from '@/composables/useBatchOperations'
 import { indexedDB } from '@/utils/indexedDB'
 
 const router = useRouter()
+const modelStore = useModelStore()
 const { exportModels, printModels, importModels } = useBatchOperations()
 
 const searchQuery = ref('')
@@ -221,6 +223,23 @@ const filteredModels = computed(() => {
 })
 
 const handleViewModel = (model: ModelFile) => {
+  const model3D: import('@/types/model').Model3D = {
+    id: model.id,
+    name: model.name,
+    url: model.path,
+    format: model.format,
+    createdAt: model.createdAt,
+    updatedAt: model.updatedAt,
+    thumbnail: model.thumbnail,
+    size: model.size,
+    metadata: model.metadata ? {
+      vertices: model.metadata.vertices || 0,
+      faces: model.metadata.faces || 0,
+      materials: model.metadata.materials || 0
+    } : undefined
+  }
+  modelStore.addModel(model3D)
+  
   router.push({
     name: 'viewer',
     query: { modelId: model.id }
@@ -228,6 +247,23 @@ const handleViewModel = (model: ModelFile) => {
 }
 
 const handlePrintModel = (model: ModelFile) => {
+  const model3D: import('@/types/model').Model3D = {
+    id: model.id,
+    name: model.name,
+    url: model.path,
+    format: model.format,
+    createdAt: model.createdAt,
+    updatedAt: model.updatedAt,
+    thumbnail: model.thumbnail,
+    size: model.size,
+    metadata: model.metadata ? {
+      vertices: model.metadata.vertices || 0,
+      faces: model.metadata.faces || 0,
+      materials: model.metadata.materials || 0
+    } : undefined
+  }
+  modelStore.addModel(model3D)
+  
   router.push({
     name: 'print',
     query: { modelId: model.id }

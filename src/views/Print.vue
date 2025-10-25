@@ -40,15 +40,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { usePrintStore } from '@/stores/print'
+import { useModelStore } from '@/stores/model'
 import { useBambuConnect } from '@/composables/useBambuConnect'
 import BambuConnector from '@/components/print/BambuConnector.vue'
 import PrintQueue from '@/components/print/PrintQueue.vue'
 import PrintStatus from '@/components/print/PrintStatus.vue'
 import Toast from '@/components/ui/Toast.vue'
 import type { PrintSettings } from '@/types/print'
+
+const route = useRoute()
+const modelStore = useModelStore()
 
 const printStore = usePrintStore()
 const { printQueue, currentPrintJob } = storeToRefs(printStore)
@@ -171,4 +176,31 @@ const handleClearAll = () => {
   printStore.currentPrintJob = null
   showToast(`Cleared ${count} jobs`, 'info')
 }
+
+onMounted(() => {
+  const modelId = route.query.modelId as string
+  if (modelId) {
+    const model = modelStore.getModelById(modelId)
+    const defaultSettings: PrintSettings = {
+      printer: 'Bambu Lab X1C',
+      material: 'PLA',
+      layerHeight: 0.2,
+      infillDensity: 20,
+      supports: true,
+      temperature: 210
+    }
+    
+    const newJob = {
+      id: `job-${Date.now()}`,
+      modelId: modelId,
+      modelName: model?.name || `Model ${modelId}`,
+      status: 'pending' as const,
+      progress: 0,
+      settings: currentSettings.value || defaultSettings,
+      createdAt: new Date(),
+    }
+    printStore.addPrintJob(newJob)
+    showToast(`模型 "${newJob.modelName}" 已添加到打印队列`, 'success')
+  }
+})
 </script>
