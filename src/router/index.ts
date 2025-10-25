@@ -19,37 +19,12 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/Home.vue'),
-      meta: { requiresAuth: true }
+      redirect: '/studio'
     },
     {
-      path: '/generate',
-      name: 'generate',
-      component: () => import('../views/Generate.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/viewer',
-      name: 'viewer',
-      component: () => import('../views/Viewer.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/print',
-      name: 'print',
-      component: () => import('../views/Print.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/library',
-      name: 'library',
-      component: () => import('../views/Library.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/settings',
-      name: 'settings',
-      component: () => import('../views/Settings.vue'),
+      path: '/studio',
+      name: 'studio',
+      component: () => import('../views/Studio.vue'),
       meta: { requiresAuth: true }
     }
   ]
