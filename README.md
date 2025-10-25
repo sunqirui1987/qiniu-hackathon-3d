@@ -105,6 +105,26 @@ npm install
 pnpm install
 ```
 
+### 配置后端服务
+
+**重要**: 后端服务与前端是分离的项目,运行在独立的服务器上。
+
+1. 复制环境变量配置文件:
+```bash
+cp .env.example .env
+```
+
+2. 编辑 `.env` 文件,设置后端服务器地址:
+```bash
+# 开发环境示例
+VITE_API_BASE_URL=http://localhost:3000
+
+# 生产环境示例
+VITE_API_BASE_URL=https://api.yourdomain.com
+```
+
+详细的后端配置说明请参考 [认证后端文档](./docs/AUTH_README.md)
+
 ### 开发
 
 ```bash
