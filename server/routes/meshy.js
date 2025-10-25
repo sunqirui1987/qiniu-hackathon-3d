@@ -15,9 +15,9 @@ const meshyClient = axios.create({
   timeout: 30000,
 })
 
-router.all('/*', async (req, res, next) => {
+router.all('/:path*', async (req, res, next) => {
   try {
-    const path = req.params[0]
+    const path = req.params.path
     const url = `${req.path.replace('/api/meshy/', '')}`
     
     const config = {
