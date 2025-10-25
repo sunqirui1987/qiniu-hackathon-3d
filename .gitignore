@@ -7,6 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# PM2
+.pm2
+pids
+*.pid
+*.seed
+*.pid.lock
+
 node_modules
 dist
 dist-ssr

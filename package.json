@@ -16,7 +16,16 @@
     "auth-server": "node auth-server.js",
     "auth-server:dev": "NODE_ENV=development node auth-server.js",
     "auth-server:bun": "bun auth-server.js",
-    "auth-server:bun:dev": "NODE_ENV=development bun auth-server.js"
+    "auth-server:bun:dev": "NODE_ENV=development bun auth-server.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:start:prod": "pm2 start ecosystem.config.cjs --env production",
+    "pm2:stop": "pm2 stop ecosystem.config.cjs",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs",
+    "pm2:reload": "pm2 reload ecosystem.config.cjs",
+    "pm2:delete": "pm2 delete ecosystem.config.cjs",
+    "pm2:logs": "pm2 logs auth-server",
+    "pm2:monit": "pm2 monit",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "@babylonjs/core": "^6.0.0",
@@ -44,6 +53,7 @@
     "eslint-plugin-vue": "^9.20.0",
     "happy-dom": "^20.0.8",
     "jsdom": "^27.0.1",
+    "pm2": "^5.4.3",
     "postcss": "^8.4.0",
     "prettier": "^3.2.0",
     "tailwindcss": "^3.4.0",
