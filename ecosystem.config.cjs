@@ -6,6 +6,7 @@ module.exports = {
       interpreter: 'bun',
       instances: 1,
       exec_mode: 'fork',
+      env_file: '.env.auth',
       env_production: {
         NODE_ENV: 'production',
         AUTH_PORT: 3001
