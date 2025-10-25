@@ -238,8 +238,9 @@ router.get('/:provider/mock', async (req, res, next) => {
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5175'
     
-    // 构建重定向URL，包含redirect参数
-    let redirectUrl = `${frontendUrl}/auth/callback?token=${result.accessToken}&refresh_token=${result.refreshToken}`
+    // 构建重定向URL，包含redirect参数和用户数据
+    const userData = encodeURIComponent(JSON.stringify(result.user))
+    let redirectUrl = `${frontendUrl}/auth/callback?token=${result.accessToken}&refresh_token=${result.refreshToken}&user=${userData}`
     
     // 如果有redirect参数，添加到回调URL中
     if (redirect) {
