@@ -32,3 +32,28 @@ export interface GenerateOptions {
   enablePBR?: boolean
   seed?: number
 }
+
+export interface ModelFile {
+  id: string
+  name: string
+  path: string
+  format: '3mf' | 'stl' | 'obj' | 'glb' | 'gltf'
+  size: number
+  createdAt: Date
+  updatedAt: Date
+  thumbnail?: string
+  tags: string[]
+  category?: string
+  metadata?: {
+    vertices?: number
+    faces?: number
+    materials?: number
+  }
+}
+
+export interface ModelIndex {
+  files: ModelFile[]
+  categories: string[]
+  tags: string[]
+  lastUpdated: Date
+}
