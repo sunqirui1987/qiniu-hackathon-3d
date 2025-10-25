@@ -3,36 +3,49 @@ import axios, { AxiosInstance, AxiosError } from 'axios'
 export interface MeshyTextTo3DOptions {
   prompt: string
   negative_prompt?: string
-  art_style?: 'realistic' | 'sculpture'
-  ai_model?: 'meshy-4' | 'meshy-5' | 'meshy-5.3' | 'latest'
+  art_style?: 'realistic' | 'sculpture' | 'cartoon' | 'low-poly'
+  ai_model?: 'meshy-4' | 'meshy-5' | 'meshy-6-preview' | 'latest'
   license?: 'private' | 'public'
   is_a_t_pose?: boolean
-  symmetry_mode?: 0 | 1 | 2 // 0: off, 1: auto, 2: on
+  symmetry_mode?: 'off' | 'auto' | 'on'
   seed?: number
-  image_ids?: string[]
-}
-
-export interface MeshyTextureOptions {
-  parent: string // parent task ID
-  prompt?: string
-  image_id?: string
-  art_style?: 'realistic' | 'sculpture'
-  ai_model?: 'meshy-5.1' | 'latest'
-  enable_pbr?: boolean
+  image_urls?: string[]
 }
 
 export interface MeshyImageTo3DOptions {
-  image_id: string
-  ai_model?: 'latest'
+  image_url: string
+  ai_model?: 'meshy-4' | 'meshy-5' | 'latest'
   topology?: 'triangle' | 'quad'
   target_polycount?: number
-  symmetry_mode?: 0 | 1 | 2 // 0: off, 1: auto, 2: on
+  symmetry_mode?: 'off' | 'auto' | 'on'
   should_remesh?: boolean
   should_texture?: boolean
   enable_pbr?: boolean
   is_a_t_pose?: boolean
   texture_prompt?: string
+  texture_image_url?: string
   moderation?: boolean
+}
+
+export interface MeshyRemeshOptions {
+  input_task_id?: string
+  model_url?: string
+  target_formats?: ('glb' | 'fbx' | 'obj' | 'usdz' | 'blend' | 'stl')[]
+  topology?: 'triangle' | 'quad'
+  target_polycount?: number
+  resize_height?: number
+  origin_at?: 'bottom' | 'center'
+  convert_format_only?: boolean
+}
+
+export interface MeshyRetextureOptions {
+  input_task_id?: string
+  model_url?: string
+  text_style_prompt?: string
+  image_style_url?: string
+  ai_model?: 'meshy-4' | 'meshy-5'
+  enable_original_uv?: boolean
+  enable_pbr?: boolean
 }
 
 export interface MeshyTaskResponse {
@@ -41,7 +54,7 @@ export interface MeshyTaskResponse {
 
 export interface MeshyTaskStatus {
   id: string
-  status: 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED'
+  status: 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED' | 'CANCELED'
   progress: number
   model_urls?: {
     glb?: string
@@ -49,10 +62,22 @@ export interface MeshyTaskStatus {
     obj?: string
     usdz?: string
     mtl?: string
+    blend?: string
+    stl?: string
   }
+  texture_urls?: Array<{
+    base_color?: string
+    metallic?: string
+    normal?: string
+    roughness?: string
+  }>
   thumbnail_url?: string
-  created_at: string
-  finished_at?: string
+  created_at: number
+  started_at?: number
+  finished_at?: number
+  task_error?: {
+    message: string
+  }
   error?: string
 }
 
@@ -82,10 +107,8 @@ export class MeshyClient {
       timeout: 30000,
     })
 
-    // Add request interceptor to include auth token
     this.client.interceptors.request.use(
       (config) => {
-        // Get auth token from localStorage
         const authToken = localStorage.getItem('auth_token')
         if (authToken) {
           config.headers.Authorization = `Bearer ${authToken}`
@@ -131,101 +154,115 @@ export class MeshyClient {
   }
 
   async createTextTo3D(options: MeshyTextTo3DOptions): Promise<MeshyTaskResponse> {
-    const requestBody = {
-      phase: 'draft',
-      args: {
-        draft: {
-          prompt: options.prompt,
-          ...(options.negative_prompt && { negativePrompt: options.negative_prompt }),
-          ...(options.art_style && { artStyle: options.art_style }),
-          ...(options.ai_model && { aiModel: options.ai_model }),
-          ...(options.license && { license: options.license }),
-          ...(options.is_a_t_pose !== undefined && { isATPose: options.is_a_t_pose }),
-          ...(options.symmetry_mode !== undefined && { symmetryMode: options.symmetry_mode }),
-          ...(options.seed && { seed: options.seed }),
-          ...(options.image_ids && { imageIds: options.image_ids }),
-        }
-      },
-      isNSFW: false
+    const requestBody: Record<string, unknown> = {
+      prompt: options.prompt,
     }
-    
-    const response = await this.client.post<MeshyTaskResponse>('/web/v2/tasks', requestBody)
+
+    if (options.negative_prompt) requestBody.negative_prompt = options.negative_prompt
+    if (options.art_style) requestBody.art_style = options.art_style
+    if (options.ai_model) requestBody.ai_model = options.ai_model
+    if (options.license) requestBody.license = options.license
+    if (options.is_a_t_pose !== undefined) requestBody.is_a_t_pose = options.is_a_t_pose
+    if (options.symmetry_mode) requestBody.symmetry_mode = options.symmetry_mode
+    if (options.seed) requestBody.seed = options.seed
+    if (options.image_urls) requestBody.image_urls = options.image_urls
+
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/text-to-3d', requestBody)
     return response.data
   }
 
-  async createTexture(options: MeshyTextureOptions): Promise<MeshyTaskResponse> {
-    const requestBody = {
-      phase: 'texture',
-      parent: options.parent,
-      args: {
-        texture: {
-          ...(options.prompt && { prompt: options.prompt }),
-          ...(options.image_id && { imageId: options.image_id }),
-          ...(options.art_style && { artStyle: options.art_style }),
-          ...(options.ai_model && { aiModel: options.ai_model }),
-          ...(options.enable_pbr !== undefined && { enablePBR: options.enable_pbr }),
-        }
-      },
-      isNSFW: false
+  async createImageTo3D(options: MeshyImageTo3DOptions): Promise<MeshyTaskResponse> {
+    const requestBody: Record<string, unknown> = {
+      image_url: options.image_url,
     }
-    
-    const response = await this.client.post<MeshyTaskResponse>('/web/v2/tasks', requestBody)
+
+    if (options.ai_model) requestBody.ai_model = options.ai_model
+    if (options.topology) requestBody.topology = options.topology
+    if (options.target_polycount) requestBody.target_polycount = options.target_polycount
+    if (options.symmetry_mode) requestBody.symmetry_mode = options.symmetry_mode
+    if (options.should_remesh !== undefined) requestBody.should_remesh = options.should_remesh
+    if (options.should_texture !== undefined) requestBody.should_texture = options.should_texture
+    if (options.enable_pbr !== undefined) requestBody.enable_pbr = options.enable_pbr
+    if (options.is_a_t_pose !== undefined) requestBody.is_a_t_pose = options.is_a_t_pose
+    if (options.texture_prompt) requestBody.texture_prompt = options.texture_prompt
+    if (options.texture_image_url) requestBody.texture_image_url = options.texture_image_url
+    if (options.moderation !== undefined) requestBody.moderation = options.moderation
+
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/image-to-3d', requestBody)
     return response.data
   }
 
-  async getTaskStatus(taskId: string): Promise<MeshyTaskStatus> {
+  async createRemesh(options: MeshyRemeshOptions): Promise<MeshyTaskResponse> {
+    const requestBody: Record<string, unknown> = {}
+
+    if (options.input_task_id) requestBody.input_task_id = options.input_task_id
+    if (options.model_url) requestBody.model_url = options.model_url
+    if (options.target_formats) requestBody.target_formats = options.target_formats
+    if (options.topology) requestBody.topology = options.topology
+    if (options.target_polycount) requestBody.target_polycount = options.target_polycount
+    if (options.resize_height) requestBody.resize_height = options.resize_height
+    if (options.origin_at) requestBody.origin_at = options.origin_at
+    if (options.convert_format_only !== undefined) requestBody.convert_format_only = options.convert_format_only
+
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/remesh', requestBody)
+    return response.data
+  }
+
+  async createRetexture(options: MeshyRetextureOptions): Promise<MeshyTaskResponse> {
+    const requestBody: Record<string, unknown> = {}
+
+    if (options.input_task_id) requestBody.input_task_id = options.input_task_id
+    if (options.model_url) requestBody.model_url = options.model_url
+    if (options.text_style_prompt) requestBody.text_style_prompt = options.text_style_prompt
+    if (options.image_style_url) requestBody.image_style_url = options.image_style_url
+    if (options.ai_model) requestBody.ai_model = options.ai_model
+    if (options.enable_original_uv !== undefined) requestBody.enable_original_uv = options.enable_original_uv
+    if (options.enable_pbr !== undefined) requestBody.enable_pbr = options.enable_pbr
+
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/retexture', requestBody)
+    return response.data
+  }
+
+  async getTaskStatus(taskId: string, taskType?: 'text-to-3d' | 'image-to-3d' | 'remesh' | 'retexture'): Promise<MeshyTaskStatus> {
     const cached = this.getCachedTaskStatus(taskId)
     if (cached) {
       return cached
     }
 
-    const response = await this.client.get<MeshyTaskStatus>(`/web/v1/tasks/${taskId}/status`)
+    let endpoint = `/openapi/v1/text-to-3d/${taskId}`
+    if (taskType === 'image-to-3d') {
+      endpoint = `/openapi/v1/image-to-3d/${taskId}`
+    } else if (taskType === 'remesh') {
+      endpoint = `/openapi/v1/remesh/${taskId}`
+    } else if (taskType === 'retexture') {
+      endpoint = `/openapi/v1/retexture/${taskId}`
+    }
+
+    const response = await this.client.get<MeshyTaskStatus>(endpoint)
     this.cacheTaskStatus(taskId, response.data)
     return response.data
   }
 
-  async createImageTo3D(options: MeshyImageTo3DOptions): Promise<MeshyTaskResponse> {
-    const requestBody = {
-      phase: 'draft',
-      args: {
-        draft: {
-          imageId: options.image_id,
-          ...(options.ai_model && { aiModel: options.ai_model }),
-          ...(options.topology && { topology: options.topology }),
-          ...(options.target_polycount && { targetPolycount: options.target_polycount }),
-          ...(options.symmetry_mode !== undefined && { symmetryMode: options.symmetry_mode }),
-          ...(options.should_remesh !== undefined && { shouldRemesh: options.should_remesh }),
-          ...(options.should_texture !== undefined && { shouldTexture: options.should_texture }),
-          ...(options.enable_pbr !== undefined && { enablePBR: options.enable_pbr }),
-          ...(options.is_a_t_pose !== undefined && { isATPose: options.is_a_t_pose }),
-          ...(options.texture_prompt && { texturePrompt: options.texture_prompt }),
-        }
-      },
-      isNSFW: false
-    }
-    
-    const response = await this.client.post<MeshyTaskResponse>('/web/v2/tasks', requestBody)
+  async listTasks(taskType: 'text-to-3d' | 'image-to-3d' | 'remesh' | 'retexture', params?: {
+    page_num?: number
+    page_size?: number
+    sort_by?: string
+    order?: 'asc' | 'desc'
+  }): Promise<{ data: MeshyTaskStatus[], total: number }> {
+    const endpoint = `/openapi/v1/${taskType}`
+    const response = await this.client.get(endpoint, { params })
     return response.data
   }
 
-  async uploadImage(file: File): Promise<{ url: string; filename: string }> {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const response = await this.client.post<{ url: string; filename: string }>(
-      '/web/v1/files/images?skipNameGeneration',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    )
-    return response.data
+  async deleteTask(taskId: string, taskType: 'text-to-3d' | 'image-to-3d' | 'remesh' | 'retexture'): Promise<void> {
+    const endpoint = `/openapi/v1/${taskType}/${taskId}`
+    await this.client.delete(endpoint)
+    this.taskStatusCache.delete(taskId)
   }
 
   async pollTaskUntilComplete(
     taskId: string,
+    taskType: 'text-to-3d' | 'image-to-3d' | 'remesh' | 'retexture',
     options: {
       maxAttempts?: number
       pollInterval?: number
@@ -243,7 +280,7 @@ export class MeshyClient {
           throw new Error('Task polling cancelled by user')
         }
 
-        const status = await this.getTaskStatus(taskId)
+        const status = await this.getTaskStatus(taskId, taskType)
 
         if (onProgress) {
           onProgress(status.progress, status)
@@ -256,12 +293,17 @@ export class MeshyClient {
 
         if (status.status === 'FAILED') {
           this.abortControllers.delete(taskId)
-          throw new Error(`Task failed: ${status.error || 'Unknown error'}`)
+          throw new Error(`Task failed: ${status.task_error?.message || status.error || 'Unknown error'}`)
         }
 
         if (status.status === 'EXPIRED') {
           this.abortControllers.delete(taskId)
           throw new Error('Task expired')
+        }
+
+        if (status.status === 'CANCELED') {
+          this.abortControllers.delete(taskId)
+          throw new Error('Task was canceled')
         }
 
         await new Promise((resolve, reject) => {
