@@ -33,7 +33,7 @@ class DatabaseService {
     this.db = new Database(dbPath)
     
     // 启用 WAL 模式以提高并发性能
-    this.db.pragma('journal_mode = WAL')
+    this.db.exec('PRAGMA journal_mode = WAL')
     
     // 初始化数据库表
     this._initTables()
