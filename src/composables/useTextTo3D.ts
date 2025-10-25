@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { MeshyClient, MeshyTextTo3DPreviewOptions, MeshyTaskStatus } from '../utils/meshyClient'
+import { MeshyClient, MeshyTextTo3DOptions, MeshyTaskStatus } from '../utils/meshyClient'
 import type { Model3D } from '../types/model'
 import { getUserFriendlyErrorMessage } from '../utils/errorHandler'
 
@@ -52,55 +52,63 @@ export function useTextTo3D(apiKey: string) {
       previewTaskId.value = null
       refineTaskId.value = null
 
-      const previewOptions: Omit<MeshyTextTo3DPreviewOptions, 'mode'> = {
+      // 转换参数格式以匹配新的 API
+      const createOptions: MeshyTextTo3DOptions = {
         prompt: options.prompt,
         negative_prompt: options.negative_prompt,
         art_style: options.artStyle,
         ai_model: options.aiModel,
-        topology: options.topology,
-        target_polycount: options.targetPolycount,
-        should_remesh: options.shouldRemesh,
-        symmetry_mode: options.symmetryMode,
+        license: 'private',
         is_a_t_pose: options.isATPose,
+        symmetry_mode: options.symmetryMode === 'off' ? 0 : options.symmetryMode === 'auto' ? 1 : 2,
         seed: options.seed,
       }
 
-      const previewResponse = await client.createTextTo3DPreview(previewOptions)
-      previewTaskId.value = previewResponse.result
+      // 创建 3D 模型任务
+      const taskResponse = await client.createTextTo3D(createOptions)
+      previewTaskId.value = taskResponse.result
 
-      const previewStatus = await client.pollTaskUntilComplete(
-        previewResponse.result,
-        'text-to-3d',
+      // 等待任务完成
+      const taskStatus = await client.pollTaskUntilComplete(
+        taskResponse.result,
         {
-          onProgress: (taskProgress) => {
-            progress.value = taskProgress * 0.5
+          onProgress: (taskProgress: number) => {
+            progress.value = taskProgress
           },
         }
       )
 
-      const refineResponse = await client.createTextTo3DRefine({
-        preview_task_id: previewStatus.id,
-        enable_pbr: options.enablePBR,
-        texture_prompt: options.texturePrompt,
-      })
-      refineTaskId.value = refineResponse.result
+      // 如果需要纹理，创建纹理任务
+      if (options.enablePBR || options.texturePrompt) {
+        const textureResponse = await client.createTexture({
+          parent: taskStatus.id,
+          prompt: options.texturePrompt,
+          art_style: options.artStyle,
+          enable_pbr: options.enablePBR,
+        })
+        refineTaskId.value = textureResponse.result
 
-      const refineStatus = await client.pollTaskUntilComplete(
-        refineResponse.result,
-        'text-to-3d',
-        {
-          onProgress: (taskProgress) => {
-            progress.value = 50 + taskProgress * 0.5
-          },
-        }
-      )
+        const textureStatus = await client.pollTaskUntilComplete(
+          textureResponse.result,
+          {
+            onProgress: (taskProgress: number) => {
+              progress.value = 50 + taskProgress * 0.5
+            },
+          }
+        )
 
-      const model = convertTaskToModel(refineStatus, options.prompt)
-      result.value = model
-      status.value = 'completed'
-      progress.value = 100
-
-      return model
+        const model = convertTaskToModel(textureStatus, options.prompt)
+        result.value = model
+        status.value = 'completed'
+        progress.value = 100
+        return model
+      } else {
+        const model = convertTaskToModel(taskStatus, options.prompt)
+        result.value = model
+        status.value = 'completed'
+        progress.value = 100
+        return model
+      }
     } catch (err) {
       const errorMessage = getUserFriendlyErrorMessage(err)
       error.value = errorMessage

@@ -64,11 +64,9 @@ export function useMeshyTask(apiKey: string) {
 
   const getTaskStatus = async (
     taskId: string,
-    type: 'text-to-3d' | 'image-to-3d'
+    type?: 'text-to-3d' | 'image-to-3d' // type 参数现在是可选的，因为统一使用一个端点
   ): Promise<MeshyTaskStatus> => {
-    const status = type === 'text-to-3d'
-      ? await client.getTextTo3DTaskStatus(taskId)
-      : await client.getImageTo3DTaskStatus(taskId)
+    const status = await client.getTaskStatus(taskId)
     
     updateTask(taskId, status)
     
@@ -77,7 +75,7 @@ export function useMeshyTask(apiKey: string) {
 
   const pollTask = async (
     taskId: string,
-    type: 'text-to-3d' | 'image-to-3d',
+    type?: 'text-to-3d' | 'image-to-3d', // type 参数现在是可选的
     options?: {
       maxAttempts?: number
       pollInterval?: number
@@ -86,10 +84,9 @@ export function useMeshyTask(apiKey: string) {
   ): Promise<MeshyTaskStatus> => {
     const finalStatus = await client.pollTaskUntilComplete(
       taskId,
-      type,
       {
         ...options,
-        onProgress: (progress, status) => {
+        onProgress: (progress: number, status: MeshyTaskStatus) => {
           updateTask(taskId, status)
           options?.onProgress?.(progress, status)
         },

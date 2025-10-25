@@ -262,28 +262,28 @@ const generateFromText = async () => {
     currentProgress.value = 0
     estimatedTime.value = '约4-6分钟'
 
-    const previewResponse = await meshyClient.createTextTo3DPreview({
+    const taskResponse = await meshyClient.createTextTo3D({
       prompt: textPrompt.value,
       art_style: textOptions.value.artStyle,
       ai_model: textOptions.value.aiModel,
-      topology: textOptions.value.topology,
-      target_polycount: textOptions.value.targetPolycount,
+      license: 'private',
+      is_a_t_pose: textOptions.value.isATPose,
+      symmetry_mode: textOptions.value.symmetryMode === 'off' ? 0 : textOptions.value.symmetryMode === 'auto' ? 1 : 2,
       seed: textOptions.value.seed,
     })
 
-    const previewTaskId = previewResponse.result
+    const taskId = taskResponse.result
     taskDetails.value = {
-      id: previewTaskId,
+      id: taskId,
       type: 'text-to-3d',
       createdAt: new Date(),
     }
 
-    const previewStatus = await meshyClient.pollTaskUntilComplete(
-      previewTaskId,
-      'text-to-3d',
+    const taskStatus = await meshyClient.pollTaskUntilComplete(
+      taskId,
       {
         onProgress: (progress, status) => {
-          currentProgress.value = progress * 0.5
+          currentProgress.value = textOptions.value.enablePBR ? progress * 0.5 : progress
           if (status.thumbnail_url) {
             previewUrl.value = status.thumbnail_url
           }
@@ -291,20 +291,20 @@ const generateFromText = async () => {
       }
     )
 
-    if (textOptions.value.enablePBR) {
+    if (textOptions.value.enablePBR || textOptions.value.texturePrompt) {
       currentProgress.value = 50
       estimatedTime.value = '约2-3分钟'
 
-      const refineResponse = await meshyClient.createTextTo3DRefine({
-        preview_task_id: previewTaskId,
-        enable_pbr: true,
-        texture_prompt: textOptions.value.texturePrompt,
+      const textureResponse = await meshyClient.createTexture({
+        parent: taskStatus.id,
+        prompt: textOptions.value.texturePrompt,
+        art_style: textOptions.value.artStyle,
+        enable_pbr: textOptions.value.enablePBR,
       })
 
-      const refineTaskId = refineResponse.result
-      const refineStatus = await meshyClient.pollTaskUntilComplete(
-        refineTaskId,
-        'text-to-3d',
+      const textureTaskId = textureResponse.result
+      const textureStatus = await meshyClient.pollTaskUntilComplete(
+        textureTaskId,
         {
           onProgress: (progress, status) => {
             currentProgress.value = 50 + progress * 0.5
@@ -315,10 +315,10 @@ const generateFromText = async () => {
         }
       )
 
-      await handleTaskCompletion(refineStatus, 'text')
+      await handleTaskCompletion(textureStatus, 'text')
     } else {
       currentProgress.value = 100
-      await handleTaskCompletion(previewStatus, 'text')
+      await handleTaskCompletion(taskStatus, 'text')
     }
   } catch (error) {
     throw error
@@ -340,12 +340,13 @@ const generateFromImage = async () => {
     estimatedTime.value = '约3-5分钟'
 
     const response = await meshyClient.createImageTo3D({
-      image_url: uploadResult.url,
+      image_id: uploadResult.filename, // 使用 filename 作为 image_id
       topology: imageOptions.value.topology,
       target_polycount: imageOptions.value.targetPolycount,
       should_texture: imageOptions.value.shouldTexture,
       enable_pbr: imageOptions.value.enablePBR,
       texture_prompt: imageOptions.value.texturePrompt,
+      symmetry_mode: imageOptions.value.symmetryMode === 'off' ? 0 : imageOptions.value.symmetryMode === 'auto' ? 1 : 2,
     })
 
     const taskId = response.result
@@ -357,7 +358,6 @@ const generateFromImage = async () => {
 
     const finalStatus = await meshyClient.pollTaskUntilComplete(
       taskId,
-      'image-to-3d',
       {
         onProgress: (progress, status) => {
           currentProgress.value = 20 + progress * 0.8

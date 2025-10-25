@@ -1,34 +1,32 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
 
-export interface MeshyTextTo3DPreviewOptions {
-  mode: 'preview'
+export interface MeshyTextTo3DOptions {
   prompt: string
   negative_prompt?: string
   art_style?: 'realistic' | 'sculpture'
-  ai_model?: 'meshy-4' | 'meshy-5' | 'latest'
-  topology?: 'triangle' | 'quad'
-  target_polycount?: number
-  should_remesh?: boolean
-  symmetry_mode?: 'off' | 'auto' | 'on'
+  ai_model?: 'meshy-4' | 'meshy-5' | 'meshy-5.3' | 'latest'
+  license?: 'private' | 'public'
   is_a_t_pose?: boolean
+  symmetry_mode?: 0 | 1 | 2 // 0: off, 1: auto, 2: on
   seed?: number
-  moderation?: boolean
+  image_ids?: string[]
 }
 
-export interface MeshyTextTo3DRefineOptions {
-  mode: 'refine'
-  preview_task_id: string
+export interface MeshyTextureOptions {
+  parent: string // parent task ID
+  prompt?: string
+  image_id?: string
+  art_style?: 'realistic' | 'sculpture'
+  ai_model?: 'meshy-5.1' | 'latest'
   enable_pbr?: boolean
-  texture_prompt?: string
-  texture_image_url?: string
 }
 
 export interface MeshyImageTo3DOptions {
-  image_url: string
+  image_id: string
   ai_model?: 'latest'
   topology?: 'triangle' | 'quad'
   target_polycount?: number
-  symmetry_mode?: 'auto' | 'off' | 'on'
+  symmetry_mode?: 0 | 1 | 2 // 0: off, 1: auto, 2: on
   should_remesh?: boolean
   should_texture?: boolean
   enable_pbr?: boolean
@@ -84,6 +82,21 @@ export class MeshyClient {
       timeout: 30000,
     })
 
+    // Add request interceptor to include auth token
+    this.client.interceptors.request.use(
+      (config) => {
+        // Get auth token from localStorage
+        const authToken = localStorage.getItem('auth_token')
+        if (authToken) {
+          config.headers.Authorization = `Bearer ${authToken}`
+        }
+        return config
+      },
+      (error) => {
+        return Promise.reject(error)
+      }
+    )
+
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError<MeshyApiError>) => {
@@ -117,46 +130,81 @@ export class MeshyClient {
     return new Error(error.message || 'Unknown error occurred')
   }
 
-  async createTextTo3DPreview(options: Omit<MeshyTextTo3DPreviewOptions, 'mode'>): Promise<MeshyTaskResponse> {
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/text-to-3d', {
-      mode: 'preview',
-      ...options,
-    })
+  async createTextTo3D(options: MeshyTextTo3DOptions): Promise<MeshyTaskResponse> {
+    const requestBody = {
+      phase: 'draft',
+      args: {
+        draft: {
+          prompt: options.prompt,
+          ...(options.negative_prompt && { negativePrompt: options.negative_prompt }),
+          ...(options.art_style && { artStyle: options.art_style }),
+          ...(options.ai_model && { aiModel: options.ai_model }),
+          ...(options.license && { license: options.license }),
+          ...(options.is_a_t_pose !== undefined && { isATPose: options.is_a_t_pose }),
+          ...(options.symmetry_mode !== undefined && { symmetryMode: options.symmetry_mode }),
+          ...(options.seed && { seed: options.seed }),
+          ...(options.image_ids && { imageIds: options.image_ids }),
+        }
+      },
+      isNSFW: false
+    }
+    
+    const response = await this.client.post<MeshyTaskResponse>('/web/v2/tasks', requestBody)
     return response.data
   }
 
-  async createTextTo3DRefine(options: Omit<MeshyTextTo3DRefineOptions, 'mode'>): Promise<MeshyTaskResponse> {
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/text-to-3d', {
-      mode: 'refine',
-      ...options,
-    })
+  async createTexture(options: MeshyTextureOptions): Promise<MeshyTaskResponse> {
+    const requestBody = {
+      phase: 'texture',
+      parent: options.parent,
+      args: {
+        texture: {
+          ...(options.prompt && { prompt: options.prompt }),
+          ...(options.image_id && { imageId: options.image_id }),
+          ...(options.art_style && { artStyle: options.art_style }),
+          ...(options.ai_model && { aiModel: options.ai_model }),
+          ...(options.enable_pbr !== undefined && { enablePBR: options.enable_pbr }),
+        }
+      },
+      isNSFW: false
+    }
+    
+    const response = await this.client.post<MeshyTaskResponse>('/web/v2/tasks', requestBody)
     return response.data
   }
 
-  async getTextTo3DTaskStatus(taskId: string): Promise<MeshyTaskStatus> {
+  async getTaskStatus(taskId: string): Promise<MeshyTaskStatus> {
     const cached = this.getCachedTaskStatus(taskId)
     if (cached) {
       return cached
     }
 
-    const response = await this.client.get<MeshyTaskStatus>(`/openapi/v2/text-to-3d/${taskId}`)
+    const response = await this.client.get<MeshyTaskStatus>(`/web/v1/tasks/${taskId}/status`)
     this.cacheTaskStatus(taskId, response.data)
     return response.data
   }
 
   async createImageTo3D(options: MeshyImageTo3DOptions): Promise<MeshyTaskResponse> {
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/image-to-3d', options)
-    return response.data
-  }
-
-  async getImageTo3DTaskStatus(taskId: string): Promise<MeshyTaskStatus> {
-    const cached = this.getCachedTaskStatus(taskId)
-    if (cached) {
-      return cached
+    const requestBody = {
+      phase: 'draft',
+      args: {
+        draft: {
+          imageId: options.image_id,
+          ...(options.ai_model && { aiModel: options.ai_model }),
+          ...(options.topology && { topology: options.topology }),
+          ...(options.target_polycount && { targetPolycount: options.target_polycount }),
+          ...(options.symmetry_mode !== undefined && { symmetryMode: options.symmetry_mode }),
+          ...(options.should_remesh !== undefined && { shouldRemesh: options.should_remesh }),
+          ...(options.should_texture !== undefined && { shouldTexture: options.should_texture }),
+          ...(options.enable_pbr !== undefined && { enablePBR: options.enable_pbr }),
+          ...(options.is_a_t_pose !== undefined && { isATPose: options.is_a_t_pose }),
+          ...(options.texture_prompt && { texturePrompt: options.texture_prompt }),
+        }
+      },
+      isNSFW: false
     }
-
-    const response = await this.client.get<MeshyTaskStatus>(`/openapi/v1/image-to-3d/${taskId}`)
-    this.cacheTaskStatus(taskId, response.data)
+    
+    const response = await this.client.post<MeshyTaskResponse>('/web/v2/tasks', requestBody)
     return response.data
   }
 
@@ -178,7 +226,6 @@ export class MeshyClient {
 
   async pollTaskUntilComplete(
     taskId: string,
-    taskType: 'text-to-3d' | 'image-to-3d',
     options: {
       maxAttempts?: number
       pollInterval?: number
@@ -196,10 +243,7 @@ export class MeshyClient {
           throw new Error('Task polling cancelled by user')
         }
 
-        const status =
-          taskType === 'text-to-3d'
-            ? await this.getTextTo3DTaskStatus(taskId)
-            : await this.getImageTo3DTaskStatus(taskId)
+        const status = await this.getTaskStatus(taskId)
 
         if (onProgress) {
           onProgress(status.progress, status)

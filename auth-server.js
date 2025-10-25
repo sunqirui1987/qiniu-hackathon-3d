@@ -67,7 +67,12 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRouter)
 
 // 挂载 Meshy API 代理路由
-app.use('/api/meshy', meshyRouter)
+console.log('[Server] 注册 Meshy API 代理路由到 /api/meshy')
+app.use('/api/meshy', (req, res, next) => {
+  console.log('[Server] Meshy 路由中间件被调用:', req.method, req.originalUrl)
+  console.log('[Server] 请求路径:', req.path)
+  next()
+}, meshyRouter)
 
 // 简化的OAuth路由 - 直接访问 /auth/provider
 app.get('/auth/:provider', (req, res) => {

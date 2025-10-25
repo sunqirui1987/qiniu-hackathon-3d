@@ -24,14 +24,19 @@ export function securityMiddleware(req, res, next) {
 
 // 验证请求是否带有有效的认证令牌
 export function requireAuth(req, res, next) {
+  console.log('[Auth] requireAuth middleware called for:', req.method, req.originalUrl)
+  console.log('[Auth] Authorization header:', req.headers.authorization)
+  
   const authHeader = req.headers.authorization
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('[Auth] Authentication failed - missing or invalid auth header')
     return res.status(401).json({
       success: false,
       error: 'Authentication required'
     })
   }
   
+  console.log('[Auth] Authentication passed')
   next()
 }
