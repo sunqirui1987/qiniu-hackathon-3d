@@ -11,7 +11,7 @@
         :src="model.thumbnail"
         :alt="model.name"
         class="w-full h-full object-cover"
-      />
+      >
       <div
         v-else
         class="flex items-center justify-center w-full h-full text-gray-400"
