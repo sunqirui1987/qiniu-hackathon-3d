@@ -442,11 +442,31 @@ export class MeshyClient {
   private cacheTaskStatus(taskId: string, status: MeshyTaskStatus): void {
     this.taskStatusCache.set(taskId, {
       status,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     })
+  }
+
+  /**
+   * 将 Meshy 资源 URL 转换为通过服务器代理的 URL
+   * 这样可以避免 CORS 问题
+   */
+  getProxiedAssetUrl(meshyUrl: string): string {
+    if (!meshyUrl || !meshyUrl.includes('assets.meshy.ai')) {
+      return meshyUrl
+    }
+    
+    // 构建代理 URL
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
+    const proxyUrl = `${baseUrl}/api/meshy/proxy-asset?url=${encodeURIComponent(meshyUrl)}`
+    
+    console.log('[MeshyClient] Converting URL to proxy:', {
+      original: meshyUrl,
+      proxied: proxyUrl
+    })
+    
+    return proxyUrl
   }
 }
 
-// 创建默认的 meshyClient 实例
 export const meshyClient = new MeshyClient()
 

@@ -284,7 +284,9 @@ const loadHistoryItem = (item: any) => {
   }
   
   if (modelUrl) {
-    currentModel.value = modelUrl
+    // 使用代理 URL 避免 CORS 问题
+    const proxiedUrl = meshyClient.getProxiedAssetUrl(modelUrl)
+    currentModel.value = proxiedUrl
     showNotification('历史模型加载成功！', 'success')
   } else {
     showNotification('该任务暂无可用的模型文件', 'error')

@@ -137,12 +137,14 @@ export function useImageTo3D() {
 
   const convertTaskToModel = (taskStatus: MeshyTaskStatus, imageName: string): Model3D => {
     const url = taskStatus.model_urls?.glb || taskStatus.model_urls?.obj || ''
+    // 使用代理 URL 避免 CORS 问题
+    const proxiedUrl = meshyClient.getProxiedAssetUrl(url)
     const name = imageName.replace(/\.[^/.]+$/, '')
     
     return {
       id: taskStatus.id,
       name: name.substring(0, 50),
-      url,
+      url: proxiedUrl,
       format: 'glb',
       createdAt: new Date(taskStatus.created_at),
       updatedAt: new Date(taskStatus.finished_at || taskStatus.created_at),

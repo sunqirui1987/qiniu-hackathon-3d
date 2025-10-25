@@ -165,7 +165,7 @@ import TextInput from '../components/forms/TextInput.vue'
 import ImageUpload from '../components/forms/ImageUpload.vue'
 import GenerateProgress from '../components/generate/GenerateProgress.vue'
 import type { Model3D } from '../types/model'
-import MeshyClient from '@/utils/meshyClient'
+import { meshyClient } from '@/utils/meshyClient'
 import type { MeshyTaskStatus } from '@/utils/meshyClient'
 
 const modelStore = useModelStore()
@@ -197,8 +197,6 @@ interface TaskDetails {
 }
 
 const router = useRouter()
-
-const meshyClient = new MeshyClient('')
 
 const generationMode = ref<GenerationMode>('text')
 const textPrompt = ref<string>('')
@@ -384,12 +382,15 @@ const handleTaskCompletion = async (status: MeshyTaskStatus, mode: 'text' | 'ima
     throw new Error('No model URL found in task result')
   }
 
+  // 使用代理 URL 避免 CORS 问题
+  const proxiedUrl = meshyClient.getProxiedAssetUrl(modelUrl)
+
   const newModel: Model3D = {
     id: status.id,
     name: mode === 'text' 
       ? textPrompt.value.substring(0, 50) 
       : selectedImage.value?.name.replace(/\.[^/.]+$/, '') || 'Image Model',
-    url: modelUrl,
+    url: proxiedUrl,
     format: 'glb',
     createdAt: new Date(),
     updatedAt: new Date(),

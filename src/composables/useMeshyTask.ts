@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { MeshyClient, MeshyTaskStatus } from '../utils/meshyClient'
+import { meshyClient, MeshyTaskStatus } from '../utils/meshyClient'
 import type { Model3D } from '../types/model'
 
 export interface TaskInfo {
@@ -14,7 +14,7 @@ export interface TaskInfo {
 }
 
 export function useMeshyTask(apiKey: string) {
-  const client = new MeshyClient(apiKey)
+  const client = meshyClient
   
   const tasks = ref<Map<string, TaskInfo>>(new Map())
   const currentTaskId = ref<string | null>(null)
@@ -147,11 +147,13 @@ export function useMeshyTask(apiKey: string) {
 
   const convertTaskToModel = (taskStatus: MeshyTaskStatus): Model3D => {
     const url = taskStatus.model_urls?.glb || taskStatus.model_urls?.obj || ''
+    // 使用代理 URL 避免 CORS 问题
+    const proxiedUrl = meshyClient.getProxiedAssetUrl(url)
     
     return {
       id: taskStatus.id,
       name: `Model ${taskStatus.id}`,
-      url,
+      url: proxiedUrl,
       format: 'glb',
       createdAt: new Date(taskStatus.created_at),
       updatedAt: new Date(taskStatus.finished_at || taskStatus.created_at),

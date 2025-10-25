@@ -21,6 +21,54 @@ const meshyClient = axios.create({
 
 console.log('[Meshy] Meshy API client initialized')
 
+// 专门处理 Meshy 资源文件的代理路由（如 .glb, .fbx 等 3D 模型文件）
+// 不需要授权，因为这是公开的资源代理
+router.get('/proxy-asset', async (req, res, next) => {
+  const { url } = req.query
+  
+  if (!url) {
+    return res.status(400).json({ error: 'Missing url parameter' })
+  }
+
+  console.log('[Meshy] Proxying asset request:', url)
+  
+  try {
+    // 直接使用 axios 请求资源文件，不使用 meshyClient（因为资源 URL 是完整的）
+    const response = await axios.get(url, {
+      responseType: 'stream',
+      timeout: 60000, // 增加超时时间，因为 3D 文件可能比较大
+    })
+    
+    // 设置正确的响应头
+    res.set({
+      'Content-Type': response.headers['content-type'] || 'application/octet-stream',
+      'Content-Length': response.headers['content-length'],
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    })
+    
+    console.log('[Meshy] Asset response headers:', {
+      'content-type': response.headers['content-type'],
+      'content-length': response.headers['content-length']
+    })
+    
+    // 将文件流直接传输给客户端
+    response.data.pipe(res)
+    
+  } catch (error) {
+    console.error('[Meshy] Asset proxy request failed:', error.message)
+    
+    if (error.response) {
+      console.error('[Meshy] Asset error status:', error.response.status)
+      res.status(error.response.status).json({ error: 'Failed to fetch asset' })
+    } else {
+      console.error('[Meshy] Asset network error:', error)
+      res.status(500).json({ error: 'Network error while fetching asset' })
+    }
+  }
+})
+
 router.all('/*', requireAuth, async (req, res, next) => {
   console.log('[Meshy] Proxying request:', req.method, req.originalUrl)
   console.log('[Meshy] Request path:', req.path)

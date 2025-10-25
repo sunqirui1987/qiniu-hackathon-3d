@@ -27,7 +27,7 @@ export interface TextTo3DState {
   result: Model3D | null
 }
 
-export function useTextTo3D() {
+export function useTextTo3D(apiKey?: string) {
   const client = meshyClient
   
   const status = ref<'idle' | 'generating' | 'completed' | 'error' | 'cancelled'>('idle')
@@ -148,11 +148,13 @@ export function useTextTo3D() {
 
   const convertTaskToModel = (taskStatus: MeshyTaskStatus, prompt: string): Model3D => {
     const url = taskStatus.model_urls?.glb || taskStatus.model_urls?.obj || ''
+    // 使用代理 URL 避免 CORS 问题
+    const proxiedUrl = meshyClient.getProxiedAssetUrl(url)
     
     return {
       id: taskStatus.id,
       name: prompt.substring(0, 50),
-      url,
+      url: proxiedUrl,
       format: 'glb',
       createdAt: new Date(taskStatus.created_at),
       updatedAt: new Date(taskStatus.finished_at || taskStatus.created_at),
