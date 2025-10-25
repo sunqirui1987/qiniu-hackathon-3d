@@ -4,6 +4,7 @@ import { use3DViewer } from '../use3DViewer'
 import {
   Vector3,
   SceneLoader,
+  type ISceneLoaderAsyncResult,
 } from '@babylonjs/core'
 
 vi.mock('@babylonjs/core', async () => {
@@ -101,7 +102,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       expect(isLoading.value).toBe(false)
       await loadModel('test.glb')
@@ -125,7 +126,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       await loadModel('test.gltf')
 
@@ -146,7 +147,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       await loadModel('test.stl')
 
@@ -167,7 +168,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       await loadModel('test.obj')
 
@@ -206,8 +207,8 @@ describe('use3DViewer - Import/Export', () => {
       }
 
       vi.mocked(SceneLoader.ImportMeshAsync)
-        .mockResolvedValueOnce({ meshes: [mockMesh1] } as any)
-        .mockResolvedValueOnce({ meshes: [mockMesh2] } as any)
+        .mockResolvedValueOnce({ meshes: [mockMesh1] } as unknown as ISceneLoaderAsyncResult)
+        .mockResolvedValueOnce({ meshes: [mockMesh2] } as unknown as ISceneLoaderAsyncResult)
 
       await loadModel('model1.glb')
       await loadModel('model2.glb')
@@ -231,7 +232,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const { STLExport } = await import('@babylonjs/serializers')
       vi.mocked(STLExport.CreateSTL).mockReturnValue('STL_DATA')
@@ -273,7 +274,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const mockBlob = new Blob(['GLB_DATA'], { type: 'model/gltf-binary' })
       const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
@@ -281,7 +282,7 @@ describe('use3DViewer - Import/Export', () => {
         glTFFiles: {
           'testModel.glb': mockBlob,
         },
-      } as any)
+      } as unknown as ReturnType<typeof GLTF2Export.GLBAsync>)
 
       await loadModel('test.glb')
       const blob = await exportGLB()
@@ -310,7 +311,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
       vi.mocked(GLTF2Export.GLBAsync).mockRejectedValue(new Error('Export failed'))
@@ -336,7 +337,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
       vi.mocked(GLTF2Export.GLTFAsync).mockResolvedValue({
@@ -344,7 +345,7 @@ describe('use3DViewer - Import/Export', () => {
           'model.gltf': { some: 'data' },
           'model.bin': new ArrayBuffer(8),
         },
-      } as any)
+      } as unknown as ReturnType<typeof GLTF2Export.GLTFAsync>)
 
       await loadModel('test.glb')
       const result = await exportGLTF()
@@ -369,14 +370,14 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
       vi.mocked(GLTF2Export.GLTFAsync).mockResolvedValue({
         glTFFiles: {
           'model.gltf': { some: 'data' },
         },
-      } as any)
+      } as unknown as ReturnType<typeof GLTF2Export.GLTFAsync>)
 
       await loadModel('test.glb')
       const result = await exportGLTF()
@@ -407,7 +408,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
       vi.mocked(GLTF2Export.GLTFAsync).mockRejectedValue(new Error('Export failed'))
@@ -434,7 +435,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const { OBJExport } = await import('@babylonjs/serializers/OBJ')
       vi.mocked(OBJExport.OBJ).mockReturnValue('OBJ_DATA')
@@ -468,7 +469,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       const { OBJExport } = await import('@babylonjs/serializers/OBJ')
       vi.mocked(OBJExport.OBJ).mockImplementation(() => {
@@ -500,7 +501,7 @@ describe('use3DViewer - Import/Export', () => {
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockResolvedValue({
         meshes: [mockMesh],
-      } as any)
+      } as unknown as ISceneLoaderAsyncResult)
 
       await loadModel('test.glb')
 

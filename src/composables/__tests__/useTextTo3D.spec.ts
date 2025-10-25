@@ -96,7 +96,6 @@ describe('useTextTo3D', () => {
     })
 
     it('should update progress during generation', async () => {
-      const progressUpdates: number[] = []
       const mockPreviewResponse = { result: 'preview-task-id' }
       const mockRefineResponse = { result: 'refine-task-id' }
 

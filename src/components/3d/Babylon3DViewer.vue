@@ -19,7 +19,7 @@
 
     <div
       v-if="loadError"
-      class="absolute inset-0 flex items-center justify-center bg-red-50"
+      class="error-overlay absolute inset-0 flex items-center justify-center bg-red-50"
     >
       <div class="text-center text-red-600 p-6">
         <svg

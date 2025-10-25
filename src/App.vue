@@ -125,15 +125,15 @@
                 :src="authStore.user.avatar"
                 :alt="authStore.user.name"
                 class="w-8 h-8 rounded-full"
-              />
+              >
               <span class="hidden md:inline text-sm text-gray-700">
                 {{ authStore.user?.name }}
               </span>
             </div>
             <button
-              @click="handleLogout"
               class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
               title="退出登录"
+              @click="handleLogout"
             >
               <svg
                 class="w-5 h-5"

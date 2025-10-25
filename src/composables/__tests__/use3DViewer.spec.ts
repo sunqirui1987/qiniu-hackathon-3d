@@ -7,7 +7,6 @@ import {
   ArcRotateCamera,
   Vector3,
   SceneLoader,
-  STLExport,
 } from '@babylonjs/core'
 import { GLTF2Export } from '@babylonjs/serializers'
 

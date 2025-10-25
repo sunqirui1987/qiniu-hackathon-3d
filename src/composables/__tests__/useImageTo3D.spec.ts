@@ -169,7 +169,6 @@ describe('useImageTo3D', () => {
   describe('progress tracking', () => {
     it('should update progress during generation', async () => {
       const mockFile = new File(['test'], 'test.png', { type: 'image/png' })
-      const progressUpdates: number[] = []
 
       mockClient.uploadImage.mockResolvedValue({
         url: 'https://example.com/uploaded.png',

@@ -9,12 +9,21 @@ vi.mock('../../../composables/use3DViewer', () => {
     scene: { value: null },
     camera: { value: null },
     engine: { value: null },
+    light: { value: null },
     isInitialized: { value: false },
     currentModel: { value: null },
+    isLoading: { value: false },
+    loadError: { value: null },
+    modelInfo: { value: null },
     initViewer: vi.fn(),
     loadModel: vi.fn(),
     exportSTL: vi.fn(),
     exportGLB: vi.fn(),
+    exportGLTF: vi.fn(),
+    exportOBJ: vi.fn(),
+    resetCamera: vi.fn(),
+    setZoom: vi.fn(),
+    rotateModel: vi.fn(),
     dispose: vi.fn(),
   }
   
@@ -32,12 +41,21 @@ describe('Babylon3DViewer', () => {
       scene: { value: null },
       camera: { value: null },
       engine: { value: null },
+      light: { value: null },
       isInitialized: { value: false },
       currentModel: { value: null },
+      isLoading: { value: false },
+      loadError: { value: null },
+      modelInfo: { value: null },
       initViewer: vi.fn(),
       loadModel: vi.fn(),
       exportSTL: vi.fn(),
       exportGLB: vi.fn(),
+      exportGLTF: vi.fn(),
+      exportOBJ: vi.fn(),
+      resetCamera: vi.fn(),
+      setZoom: vi.fn(),
+      rotateModel: vi.fn(),
       dispose: vi.fn(),
     }
     
@@ -196,7 +214,10 @@ describe('Babylon3DViewer', () => {
     })
 
     it('should handle model loading error', async () => {
-      mockUse3DViewer.loadModel = vi.fn().mockRejectedValue(new Error('Load failed'))
+      mockUse3DViewer.loadModel = vi.fn().mockImplementation(async () => {
+        mockUse3DViewer.loadError.value = 'Load failed'
+        throw new Error('Load failed')
+      })
       mockUse3DViewer.isInitialized.value = true
       
       wrapper = mount(Babylon3DViewer, {
@@ -216,7 +237,10 @@ describe('Babylon3DViewer', () => {
     })
 
     it('should emit modelError on load failure', async () => {
-      mockUse3DViewer.loadModel = vi.fn().mockRejectedValue(new Error('Load failed'))
+      mockUse3DViewer.loadModel = vi.fn().mockImplementation(async () => {
+        mockUse3DViewer.loadError.value = 'Load failed'
+        throw new Error('Load failed')
+      })
       mockUse3DViewer.isInitialized.value = true
       
       wrapper = mount(Babylon3DViewer, {
@@ -264,6 +288,9 @@ describe('Babylon3DViewer', () => {
       })
       
       await nextTick()
+      await nextTick()
+      
+      vi.clearAllMocks()
       
       await wrapper.setProps({ modelUrl: '' })
       await nextTick()

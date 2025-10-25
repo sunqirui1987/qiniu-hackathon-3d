@@ -29,8 +29,6 @@ describe('FileImport', () => {
   })
 
   it('should accept valid file extensions', async () => {
-    const wrapper = mount(FileImport)
-    
     const validFiles = [
       new File(['content'], 'test.glb', { type: 'model/gltf-binary' }),
       new File(['content'], 'test.gltf', { type: 'model/gltf+json' }),
@@ -39,6 +37,7 @@ describe('FileImport', () => {
     ]
     
     for (const file of validFiles) {
+      const wrapper = mount(FileImport)
       const input = wrapper.find('input[type="file"]')
       Object.defineProperty(input.element, 'files', {
         value: [file],

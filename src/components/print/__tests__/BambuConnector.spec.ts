@@ -5,10 +5,10 @@ import BambuConnector from '../BambuConnector.vue'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
 
-let mockConnected = ref(false)
-let mockPrinters = ref<string[]>([])
-let mockError = ref<string | null>(null)
-let mockIsChecking = ref(false)
+const mockConnected = ref(false)
+const mockPrinters = ref<string[]>([])
+const mockError = ref<string | null>(null)
+const mockIsChecking = ref(false)
 
 vi.mock('@/composables/useBambuConnect', () => ({
   useBambuConnect: () => {
