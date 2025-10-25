@@ -12,15 +12,23 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "auth-server": "node auth-server.js",
+    "auth-server:dev": "NODE_ENV=development node auth-server.js",
+    "auth-server:bun": "bun auth-server.js",
+    "auth-server:bun:dev": "NODE_ENV=development bun auth-server.js"
   },
   "dependencies": {
     "@babylonjs/core": "^6.0.0",
     "@babylonjs/loaders": "^6.0.0",
     "@babylonjs/serializers": "^6.49.0",
     "axios": "^1.6.0",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.8.1",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0"
