@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { MeshyClient, MeshyImageTo3DOptions } from '../utils/meshyClient'
 import type { Model3D } from '../types/model'
+import { getUserFriendlyErrorMessage } from '../utils/errorHandler'
 
 export interface ImageTo3DOptions {
   image: File | string
@@ -18,17 +19,19 @@ export interface ImageTo3DOptions {
 export function useImageTo3D(apiKey: string) {
   const client = new MeshyClient(apiKey)
   
-  const status = ref<'idle' | 'uploading' | 'generating' | 'completed' | 'error'>('idle')
+  const status = ref<'idle' | 'uploading' | 'generating' | 'completed' | 'error' | 'cancelled'>('idle')
   const progress = ref<number>(0)
   const error = ref<string | null>(null)
   const result = ref<Model3D | null>(null)
   const taskId = ref<string | null>(null)
   const uploadedImageUrl = ref<string | null>(null)
+  const retryCount = ref<number>(0)
   
   const isUploading = computed(() => status.value === 'uploading')
   const isGenerating = computed(() => status.value === 'generating')
   const isCompleted = computed(() => status.value === 'completed')
   const hasError = computed(() => status.value === 'error')
+  const isCancelled = computed(() => status.value === 'cancelled')
 
   const generateFromImage = async (options: ImageTo3DOptions): Promise<Model3D> => {
     try {
@@ -87,11 +90,27 @@ export function useImageTo3D(apiKey: string) {
 
       return model
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      const errorMessage = getUserFriendlyErrorMessage(err)
       error.value = errorMessage
       status.value = 'error'
       throw new Error(errorMessage)
     }
+  }
+
+  const cancel = () => {
+    if (!isGenerating.value && !isUploading.value) return
+
+    if (taskId.value) {
+      client.cancelTask(taskId.value)
+    }
+
+    status.value = 'cancelled'
+    error.value = 'Generation cancelled by user'
+  }
+
+  const retry = async (options: ImageTo3DOptions): Promise<Model3D> => {
+    retryCount.value++
+    return generateFromImage(options)
   }
 
   const reset = () => {
@@ -101,6 +120,7 @@ export function useImageTo3D(apiKey: string) {
     result.value = null
     taskId.value = null
     uploadedImageUrl.value = null
+    retryCount.value = 0
   }
 
   const convertTaskToModel = (taskStatus: MeshyTaskStatus, imageName: string): Model3D => {
@@ -125,11 +145,15 @@ export function useImageTo3D(apiKey: string) {
     result,
     taskId,
     uploadedImageUrl,
+    retryCount,
     isUploading,
     isGenerating,
     isCompleted,
     hasError,
+    isCancelled,
     generateFromImage,
+    cancel,
+    retry,
     reset,
   }
 }

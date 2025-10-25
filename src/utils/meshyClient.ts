@@ -69,6 +69,9 @@ export interface MeshyApiError {
 export class MeshyClient {
   private client: AxiosInstance
   private apiKey: string
+  private abortControllers: Map<string, AbortController> = new Map()
+  private taskStatusCache: Map<string, { status: MeshyTaskStatus; timestamp: number }> = new Map()
+  private readonly CACHE_TTL = 3000
 
   constructor(apiKey: string) {
     this.apiKey = apiKey
@@ -131,7 +134,13 @@ export class MeshyClient {
   }
 
   async getTextTo3DTaskStatus(taskId: string): Promise<MeshyTaskStatus> {
+    const cached = this.getCachedTaskStatus(taskId)
+    if (cached) {
+      return cached
+    }
+
     const response = await this.client.get<MeshyTaskStatus>(`/openapi/v2/text-to-3d/${taskId}`)
+    this.cacheTaskStatus(taskId, response.data)
     return response.data
   }
 
@@ -141,7 +150,13 @@ export class MeshyClient {
   }
 
   async getImageTo3DTaskStatus(taskId: string): Promise<MeshyTaskStatus> {
+    const cached = this.getCachedTaskStatus(taskId)
+    if (cached) {
+      return cached
+    }
+
     const response = await this.client.get<MeshyTaskStatus>(`/openapi/v1/image-to-3d/${taskId}`)
+    this.cacheTaskStatus(taskId, response.data)
     return response.data
   }
 
@@ -168,36 +183,60 @@ export class MeshyClient {
       maxAttempts?: number
       pollInterval?: number
       onProgress?: (progress: number, status: MeshyTaskStatus) => void
+      signal?: AbortSignal
     } = {}
   ): Promise<MeshyTaskStatus> {
-    const { maxAttempts = 120, pollInterval = 5000, onProgress } = options
+    const { maxAttempts = 120, pollInterval = 5000, onProgress, signal } = options
+    const abortController = new AbortController()
+    this.abortControllers.set(taskId, abortController)
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const status =
-        taskType === 'text-to-3d'
-          ? await this.getTextTo3DTaskStatus(taskId)
-          : await this.getImageTo3DTaskStatus(taskId)
+    try {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (signal?.aborted || abortController.signal.aborted) {
+          throw new Error('Task polling cancelled by user')
+        }
 
-      if (onProgress) {
-        onProgress(status.progress, status)
+        const status =
+          taskType === 'text-to-3d'
+            ? await this.getTextTo3DTaskStatus(taskId)
+            : await this.getImageTo3DTaskStatus(taskId)
+
+        if (onProgress) {
+          onProgress(status.progress, status)
+        }
+
+        if (status.status === 'SUCCEEDED') {
+          this.abortControllers.delete(taskId)
+          return status
+        }
+
+        if (status.status === 'FAILED') {
+          this.abortControllers.delete(taskId)
+          throw new Error(`Task failed: ${status.error || 'Unknown error'}`)
+        }
+
+        if (status.status === 'EXPIRED') {
+          this.abortControllers.delete(taskId)
+          throw new Error('Task expired')
+        }
+
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(resolve, pollInterval)
+          const onAbort = () => {
+            clearTimeout(timer)
+            reject(new Error('Task polling cancelled by user'))
+          }
+          signal?.addEventListener('abort', onAbort)
+          abortController.signal.addEventListener('abort', onAbort)
+        })
       }
 
-      if (status.status === 'SUCCEEDED') {
-        return status
-      }
-
-      if (status.status === 'FAILED') {
-        throw new Error(`Task failed: ${status.error || 'Unknown error'}`)
-      }
-
-      if (status.status === 'EXPIRED') {
-        throw new Error('Task expired')
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, pollInterval))
+      this.abortControllers.delete(taskId)
+      throw new Error('Task polling timeout - maximum attempts reached')
+    } catch (error) {
+      this.abortControllers.delete(taskId)
+      throw error
     }
-
-    throw new Error('Task polling timeout - maximum attempts reached')
   }
 
   async retryWithBackoff<T>(
@@ -207,9 +246,16 @@ export class MeshyClient {
       initialDelay?: number
       maxDelay?: number
       backoffMultiplier?: number
+      shouldRetry?: (error: Error) => boolean
     } = {}
   ): Promise<T> {
-    const { maxRetries = 3, initialDelay = 1000, maxDelay = 10000, backoffMultiplier = 2 } = options
+    const {
+      maxRetries = 3,
+      initialDelay = 1000,
+      maxDelay = 10000,
+      backoffMultiplier = 2,
+      shouldRetry = () => true,
+    } = options
 
     let lastError: Error | undefined
 
@@ -219,7 +265,7 @@ export class MeshyClient {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
 
-        if (attempt === maxRetries - 1) {
+        if (attempt === maxRetries - 1 || !shouldRetry(lastError)) {
           break
         }
 
@@ -229,6 +275,43 @@ export class MeshyClient {
     }
 
     throw new Error(`Max retries (${maxRetries}) exceeded. Last error: ${lastError?.message}`)
+  }
+
+  cancelTask(taskId: string): void {
+    const controller = this.abortControllers.get(taskId)
+    if (controller) {
+      controller.abort()
+      this.abortControllers.delete(taskId)
+    }
+  }
+
+  cancelAllTasks(): void {
+    this.abortControllers.forEach((controller) => controller.abort())
+    this.abortControllers.clear()
+  }
+
+  clearCache(): void {
+    this.taskStatusCache.clear()
+  }
+
+  getCachedTaskStatus(taskId: string): MeshyTaskStatus | null {
+    const cached = this.taskStatusCache.get(taskId)
+    if (!cached) return null
+
+    const now = Date.now()
+    if (now - cached.timestamp > this.CACHE_TTL) {
+      this.taskStatusCache.delete(taskId)
+      return null
+    }
+
+    return cached.status
+  }
+
+  private cacheTaskStatus(taskId: string, status: MeshyTaskStatus): void {
+    this.taskStatusCache.set(taskId, {
+      status,
+      timestamp: Date.now(),
+    })
   }
 }
 
