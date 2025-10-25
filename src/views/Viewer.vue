@@ -1,6 +1,12 @@
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <div class="mb-6">
+  <div
+    class="container mx-auto px-4 py-8"
+    :class="{ 'fixed inset-0 z-50 bg-white p-0': isFullscreen }"
+  >
+    <div
+      v-if="!isFullscreen"
+      class="mb-6"
+    >
       <h1 class="text-3xl font-bold text-gray-800 mb-2">
         3D查看器
       </h1>
@@ -9,10 +15,19 @@
       </p>
     </div>
 
-    <div class="grid grid-cols-12 gap-6">
-      <div class="col-span-12 lg:col-span-8 xl:col-span-9">
-        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div class="h-[600px]">
+    <div
+      class="grid grid-cols-12 gap-6"
+      :class="{ 'h-screen': isFullscreen }"
+    >
+      <div
+        class="col-span-12"
+        :class="isFullscreen ? '' : 'lg:col-span-8 xl:col-span-9'"
+      >
+        <div
+          class="bg-white rounded-lg shadow-lg overflow-hidden"
+          :class="{ 'h-full': isFullscreen }"
+        >
+          <div :class="isFullscreen ? 'h-full' : 'h-[600px]'">
             <Babylon3DViewer
               ref="viewerRef"
               :model-url="currentModelUrl"
@@ -21,10 +36,46 @@
               @error="handleLoadError"
             />
           </div>
+          <button
+            class="absolute top-4 right-4 p-2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-lg shadow-lg transition-all z-10"
+            @click="toggleFullscreen"
+          >
+            <svg
+              v-if="!isFullscreen"
+              class="w-6 h-6 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+              />
+            </svg>
+            <svg
+              v-else
+              class="w-6 h-6 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
       </div>
 
-      <div class="col-span-12 lg:col-span-4 xl:col-span-3 space-y-6">
+      <div
+        v-if="!isFullscreen"
+        class="col-span-12 lg:col-span-4 xl:col-span-3 space-y-6"
+      >
         <FileImport @file-selected="handleFileSelected" />
         
         <ModelControls
@@ -121,6 +172,7 @@ import type { ModelInfo } from '@/composables/use3DViewer'
 const viewerRef = ref<InstanceType<typeof Babylon3DViewer> | null>(null)
 const currentModelUrl = ref<string>('')
 const modelInfo = ref<ModelInfo | null>(null)
+const isFullscreen = ref(false)
 const notification = ref<{
   type: 'success' | 'error'
   title: string
@@ -189,6 +241,10 @@ const handleToggleGrid = (show: boolean) => {
 
 const handleToggleAxis = (show: boolean) => {
   console.log('Toggle axis:', show)
+}
+
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
 }
 
 const handleExport = async (format: string, fileName: string) => {
