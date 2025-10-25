@@ -197,7 +197,7 @@ describe('useMeshyTask', () => {
     })
 
     it('should compute activeTasks', () => {
-      const { createTask, activeTasks, tasks } = useMeshyTask('test-api-key')
+      const { createTask, activeTasks } = useMeshyTask('test-api-key')
 
       createTask('task-1', 'text-to-3d', { status: 'PENDING' })
       createTask('task-2', 'text-to-3d', { status: 'IN_PROGRESS' })
