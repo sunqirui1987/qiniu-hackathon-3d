@@ -3,9 +3,9 @@ module.exports = {
     {
       name: 'auth-server',
       script: './auth-server.js',
-      interpreter: process.env.PM2_INTERPRETER || 'bun',
+      interpreter: 'bun',
       instances: 1,
-      exec_mode: 'cluster',
+      exec_mode: 'fork',
       env_production: {
         NODE_ENV: 'production',
         AUTH_PORT: 3001
@@ -21,7 +21,7 @@ module.exports = {
       min_uptime: '10s',
       listen_timeout: 3000,
       kill_timeout: 5000,
-      wait_ready: true,
+      wait_ready: false,
       shutdown_with_message: true
     }
   ]
