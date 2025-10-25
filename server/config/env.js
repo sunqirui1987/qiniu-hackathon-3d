@@ -33,7 +33,7 @@ export const config = {
   
   // 数据库配置
   database: {
-    type: process.env.DB_TYPE || 'memory',
+    type: process.env.DB_TYPE || 'sqlite',
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     name: process.env.DB_NAME || 'auth_db',
