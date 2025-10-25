@@ -215,6 +215,48 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
     }
   }
 
+  const exportGLTF = async (): Promise<{ gltf: Blob; bin: Blob | null } | null> => {
+    if (!scene.value) {
+      console.error('Scene not initialized')
+      return null
+    }
+
+    try {
+      const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
+      const gltf = await GLTF2Export.GLTFAsync(scene.value, 'model')
+      
+      const gltfBlob = new Blob([JSON.stringify(gltf.glTFFiles['model.gltf'])], { 
+        type: 'model/gltf+json' 
+      })
+      
+      const binBlob = gltf.glTFFiles['model.bin'] 
+        ? new Blob([gltf.glTFFiles['model.bin']], { type: 'application/octet-stream' })
+        : null
+      
+      return { gltf: gltfBlob, bin: binBlob }
+    } catch (error) {
+      console.error('Failed to export GLTF:', error)
+      return null
+    }
+  }
+
+  const exportOBJ = async (): Promise<Blob | null> => {
+    if (!scene.value) {
+      console.error('Scene not initialized')
+      return null
+    }
+
+    try {
+      const { OBJExport } = await import('@babylonjs/serializers/OBJ')
+      const objString = OBJExport.OBJ([scene.value])
+      const blob = new Blob([objString], { type: 'model/obj' })
+      return blob
+    } catch (error) {
+      console.error('Failed to export OBJ:', error)
+      return null
+    }
+  }
+
   const resetCamera = () => {
     if (camera.value) {
       camera.value.alpha = -Math.PI / 2
@@ -273,6 +315,8 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
     loadModel,
     exportSTL,
     exportGLB,
+    exportGLTF,
+    exportOBJ,
     resetCamera,
     setZoom,
     rotateModel,

@@ -251,37 +251,58 @@ const handleExport = async (format: string, fileName: string) => {
   if (!viewerRef.value) return
 
   try {
-    let blob: Blob | null = null
-    let fileExtension = ''
-
     if (format === 'stl') {
-      blob = viewerRef.value.exportSTL()
-      fileExtension = 'stl'
+      const blob = viewerRef.value.exportSTL()
+      if (!blob) {
+        showNotification('error', '导出失败', '无法生成STL文件')
+        return
+      }
+      downloadBlob(blob, fileName, 'stl')
+      showNotification('success', '导出成功', `模型已导出为 ${fileName}.stl`)
     } else if (format === 'glb') {
-      blob = await viewerRef.value.exportGLB()
-      fileExtension = 'glb'
+      const blob = await viewerRef.value.exportGLB()
+      if (!blob) {
+        showNotification('error', '导出失败', '无法生成GLB文件')
+        return
+      }
+      downloadBlob(blob, fileName, 'glb')
+      showNotification('success', '导出成功', `模型已导出为 ${fileName}.glb`)
+    } else if (format === 'gltf') {
+      const result = await viewerRef.value.exportGLTF()
+      if (!result) {
+        showNotification('error', '导出失败', '无法生成GLTF文件')
+        return
+      }
+      downloadBlob(result.gltf, fileName, 'gltf')
+      if (result.bin) {
+        downloadBlob(result.bin, fileName, 'bin')
+      }
+      showNotification('success', '导出成功', `模型已导出为 ${fileName}.gltf${result.bin ? ' 和 ' + fileName + '.bin' : ''}`)
+    } else if (format === 'obj') {
+      const blob = await viewerRef.value.exportOBJ()
+      if (!blob) {
+        showNotification('error', '导出失败', '无法生成OBJ文件')
+        return
+      }
+      downloadBlob(blob, fileName, 'obj')
+      showNotification('success', '导出成功', `模型已导出为 ${fileName}.obj`)
     } else {
       showNotification('error', '导出失败', `暂不支持 ${format.toUpperCase()} 格式`)
       return
     }
-
-    if (!blob) {
-      showNotification('error', '导出失败', '无法生成导出文件')
-      return
-    }
-
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${fileName}.${fileExtension}`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
-    showNotification('success', '导出成功', `模型已导出为 ${fileName}.${fileExtension}`)
   } catch (error) {
     showNotification('error', '导出失败', error instanceof Error ? error.message : '未知错误')
   }
+}
+
+const downloadBlob = (blob: Blob, fileName: string, extension: string) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${fileName}.${extension}`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 </script>
