@@ -123,11 +123,17 @@ const {
 } = use3DViewer({ canvasRef })
 
 onMounted(() => {
-  initViewer()
-  emit('viewerReady')
+  try {
+    initViewer()
+    emit('viewerReady')
 
-  if (props.modelUrl && props.autoLoad) {
-    handleLoadModel(props.modelUrl)
+    if (props.modelUrl && props.autoLoad) {
+      handleLoadModel(props.modelUrl)
+    }
+  } catch (error) {
+    console.error('Failed to initialize viewer:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to initialize viewer'
+    emit('modelError', errorMessage)
   }
 })
 
@@ -137,14 +143,14 @@ watch(() => props.modelUrl, (newUrl) => {
   }
 })
 
-watch(modelInfo, (info) => {
+watch(() => modelInfo?.value, (info) => {
   if (info) {
     emit('loaded', info)
     emit('modelLoaded')
   }
 })
 
-watch(loadError, (error) => {
+watch(() => loadError?.value, (error) => {
   if (error) {
     emit('error', error)
     emit('modelError', error)
@@ -159,6 +165,24 @@ const handleLoadModel = async (url: string) => {
   }
 }
 
+const handleExportSTL = async () => {
+  try {
+    return await exportSTL()
+  } catch (error) {
+    console.error('Failed to export STL:', error)
+    throw error
+  }
+}
+
+const handleExportGLB = async () => {
+  try {
+    return await exportGLB()
+  } catch (error) {
+    console.error('Failed to export GLB:', error)
+    throw error
+  }
+}
+
 defineExpose({
   scene,
   camera,
@@ -166,8 +190,8 @@ defineExpose({
   isInitialized,
   currentModel,
   loadModel: handleLoadModel,
-  exportSTL,
-  exportGLB,
+  exportSTL: handleExportSTL,
+  exportGLB: handleExportGLB,
   exportGLTF,
   exportOBJ,
   resetCamera,

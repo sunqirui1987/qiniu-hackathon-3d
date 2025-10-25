@@ -2,15 +2,19 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useTextTo3D } from '../useTextTo3D'
 import { MeshyClient } from '../../utils/meshyClient'
 
+const mockCreateTextTo3DPreview = vi.fn()
+const mockCreateTextTo3DRefine = vi.fn()
+const mockPollTaskUntilComplete = vi.fn()
+const mockCancelTask = vi.fn()
+
 vi.mock('../../utils/meshyClient', () => {
-  class MockMeshyClient {
-    createTextTo3DPreview = vi.fn()
-    createTextTo3DRefine = vi.fn()
-    pollTaskUntilComplete = vi.fn()
-    cancelTask = vi.fn()
-  }
   return {
-    MeshyClient: MockMeshyClient,
+    MeshyClient: class MockMeshyClient {
+      createTextTo3DPreview = mockCreateTextTo3DPreview
+      createTextTo3DRefine = mockCreateTextTo3DRefine
+      pollTaskUntilComplete = mockPollTaskUntilComplete
+      cancelTask = mockCancelTask
+    },
   }
 })
 
@@ -22,18 +26,7 @@ vi.mock('../../utils/errorHandler', () => ({
 }))
 
 describe('useTextTo3D', () => {
-  let mockClient: {
-    createTextTo3DPreview: ReturnType<typeof vi.fn>
-    createTextTo3DRefine: ReturnType<typeof vi.fn>
-    pollTaskUntilComplete: ReturnType<typeof vi.fn>
-    cancelTask: ReturnType<typeof vi.fn>
-  }
-
   beforeEach(() => {
-    mockClient = new (MeshyClient as never)()
-  })
-
-  afterEach(() => {
     vi.clearAllMocks()
   })
 
@@ -74,11 +67,11 @@ describe('useTextTo3D', () => {
         finished_at: '2024-01-01T00:10:00Z',
       }
 
-      mockClient.createTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
-      mockClient.pollTaskUntilComplete
+      mockCreateTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
+      mockPollTaskUntilComplete
         .mockResolvedValueOnce(mockPreviewStatus)
         .mockResolvedValueOnce(mockRefineStatus)
-      mockClient.createTextTo3DRefine.mockResolvedValue(mockRefineResponse)
+      mockCreateTextTo3DRefine.mockResolvedValue(mockRefineResponse)
 
       const { generateModel, status, progress, result } = useTextTo3D('test-api-key')
 
@@ -96,13 +89,12 @@ describe('useTextTo3D', () => {
     })
 
     it('should update progress during generation', async () => {
-      const progressUpdates: number[] = []
       const mockPreviewResponse = { result: 'preview-task-id' }
       const mockRefineResponse = { result: 'refine-task-id' }
 
-      mockClient.createTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
-      mockClient.createTextTo3DRefine.mockResolvedValue(mockRefineResponse)
-      mockClient.pollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
+      mockCreateTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
+      mockCreateTextTo3DRefine.mockResolvedValue(mockRefineResponse)
+      mockPollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
         if (options?.onProgress) {
           options.onProgress(50)
           options.onProgress(75)
@@ -126,7 +118,7 @@ describe('useTextTo3D', () => {
     })
 
     it('should handle generation errors', async () => {
-      mockClient.createTextTo3DPreview.mockRejectedValue(new Error('API Error'))
+      mockCreateTextTo3DPreview.mockRejectedValue(new Error('API Error'))
 
       const { generateModel, status, error, hasError } = useTextTo3D('test-api-key')
 
@@ -138,7 +130,7 @@ describe('useTextTo3D', () => {
     })
 
     it('should reset state before starting new generation', async () => {
-      mockClient.createTextTo3DPreview.mockRejectedValue(new Error('First error'))
+      mockCreateTextTo3DPreview.mockRejectedValue(new Error('First error'))
 
       const { generateModel, status, error } = useTextTo3D('test-api-key')
 
@@ -146,9 +138,9 @@ describe('useTextTo3D', () => {
       expect(status.value).toBe('error')
       expect(error.value).toBe('First error')
 
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
-      mockClient.createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockCreateTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
+      mockCreateTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
+      mockPollTaskUntilComplete.mockResolvedValue({
         id: 'refine-id',
         status: 'SUCCEEDED' as const,
         progress: 100,
@@ -166,8 +158,8 @@ describe('useTextTo3D', () => {
 
   describe('cancel', () => {
     it('should cancel ongoing generation', async () => {
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'preview-task-id' })
-      mockClient.pollTaskUntilComplete.mockImplementation(
+      mockCreateTextTo3DPreview.mockResolvedValue({ result: 'preview-task-id' })
+      mockPollTaskUntilComplete.mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 10000))
       )
 
@@ -184,7 +176,7 @@ describe('useTextTo3D', () => {
       expect(status.value).toBe('cancelled')
       expect(error.value).toBe('Generation cancelled by user')
       expect(isCancelled.value).toBe(true)
-      expect(mockClient.cancelTask).toHaveBeenCalledWith('preview-task-id')
+      expect(mockCancelTask).toHaveBeenCalledWith('preview-task-id')
     })
 
     it('should not cancel if not generating', () => {
@@ -193,15 +185,15 @@ describe('useTextTo3D', () => {
       cancel()
 
       expect(status.value).toBe('idle')
-      expect(mockClient.cancelTask).not.toHaveBeenCalled()
+      expect(mockCancelTask).not.toHaveBeenCalled()
     })
   })
 
   describe('retry', () => {
     it('should retry generation and increment retry count', async () => {
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
-      mockClient.createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockCreateTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
+      mockCreateTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
+      mockPollTaskUntilComplete.mockResolvedValue({
         id: 'refine-id',
         status: 'SUCCEEDED' as const,
         progress: 100,
@@ -226,9 +218,9 @@ describe('useTextTo3D', () => {
 
   describe('reset', () => {
     it('should reset all state to initial values', async () => {
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
-      mockClient.createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockCreateTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
+      mockCreateTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
+      mockPollTaskUntilComplete.mockResolvedValue({
         id: 'refine-id',
         status: 'SUCCEEDED' as const,
         progress: 100,

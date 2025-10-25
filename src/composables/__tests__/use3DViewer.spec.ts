@@ -7,7 +7,6 @@ import {
   ArcRotateCamera,
   Vector3,
   SceneLoader,
-  STLExport,
 } from '@babylonjs/core'
 import { GLTF2Export } from '@babylonjs/serializers'
 
@@ -24,6 +23,7 @@ vi.mock('@babylonjs/core', async () => {
     render = vi.fn()
     dispose = vi.fn()
     clearColor = {}
+    whenReadyAsync = vi.fn().mockResolvedValue(undefined)
   }
   
   class MockArcRotateCamera {

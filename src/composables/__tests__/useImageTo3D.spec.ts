@@ -2,15 +2,19 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useImageTo3D } from '../useImageTo3D'
 import { MeshyClient } from '../../utils/meshyClient'
 
+const mockUploadImage = vi.fn()
+const mockCreateImageTo3D = vi.fn()
+const mockPollTaskUntilComplete = vi.fn()
+const mockCancelTask = vi.fn()
+
 vi.mock('../../utils/meshyClient', () => {
-  class MockMeshyClient {
-    uploadImage = vi.fn()
-    createImageTo3D = vi.fn()
-    pollTaskUntilComplete = vi.fn()
-    cancelTask = vi.fn()
-  }
   return {
-    MeshyClient: MockMeshyClient,
+    MeshyClient: class MockMeshyClient {
+      uploadImage = mockUploadImage
+      createImageTo3D = mockCreateImageTo3D
+      pollTaskUntilComplete = mockPollTaskUntilComplete
+      cancelTask = mockCancelTask
+    },
   }
 })
 
@@ -22,18 +26,7 @@ vi.mock('../../utils/errorHandler', () => ({
 }))
 
 describe('useImageTo3D', () => {
-  let mockClient: {
-    uploadImage: ReturnType<typeof vi.fn>
-    createImageTo3D: ReturnType<typeof vi.fn>
-    pollTaskUntilComplete: ReturnType<typeof vi.fn>
-    cancelTask: ReturnType<typeof vi.fn>
-  }
-
   beforeEach(() => {
-    mockClient = new (MeshyClient as never)()
-  })
-
-  afterEach(() => {
     vi.clearAllMocks()
   })
 
@@ -81,9 +74,9 @@ describe('useImageTo3D', () => {
         finished_at: '2024-01-01T00:10:00Z',
       }
 
-      mockClient.uploadImage.mockResolvedValue(mockUploadResponse)
-      mockClient.createImageTo3D.mockResolvedValue(mockTaskResponse)
-      mockClient.pollTaskUntilComplete.mockResolvedValue(mockTaskStatus)
+      mockUploadImage.mockResolvedValue(mockUploadResponse)
+      mockCreateImageTo3D.mockResolvedValue(mockTaskResponse)
+      mockPollTaskUntilComplete.mockResolvedValue(mockTaskStatus)
 
       const { generateFromImage, status, result, uploadedImageUrl } = useImageTo3D('test-api-key')
 
@@ -92,7 +85,7 @@ describe('useImageTo3D', () => {
         enablePBR: true,
       })
 
-      expect(mockClient.uploadImage).toHaveBeenCalledWith(mockFile)
+      expect(mockUploadImage).toHaveBeenCalledWith(mockFile)
       expect(uploadedImageUrl.value).toBe('https://example.com/uploaded.png')
       expect(status.value).toBe('completed')
       expect(result.value).toEqual(model)
@@ -104,15 +97,15 @@ describe('useImageTo3D', () => {
       const mockFile = new File(['test'], 'test.png', { type: 'image/png' })
       const statusUpdates: string[] = []
 
-      mockClient.uploadImage.mockImplementation(async () => {
+      mockUploadImage.mockImplementation(async () => {
         statusUpdates.push('uploading')
         return { url: 'https://example.com/uploaded.png', filename: 'test.png' }
       })
-      mockClient.createImageTo3D.mockImplementation(async () => {
+      mockCreateImageTo3D.mockImplementation(async () => {
         statusUpdates.push('generating')
         return { result: 'task-id' }
       })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockPollTaskUntilComplete.mockResolvedValue({
         id: 'task-id',
         status: 'SUCCEEDED' as const,
         progress: 100,
@@ -151,16 +144,16 @@ describe('useImageTo3D', () => {
         finished_at: '2024-01-01T00:10:00Z',
       }
 
-      mockClient.createImageTo3D.mockResolvedValue(mockTaskResponse)
-      mockClient.pollTaskUntilComplete.mockResolvedValue(mockTaskStatus)
+      mockCreateImageTo3D.mockResolvedValue(mockTaskResponse)
+      mockPollTaskUntilComplete.mockResolvedValue(mockTaskStatus)
 
       const { generateFromImage, uploadedImageUrl } = useImageTo3D('test-api-key')
 
       await generateFromImage({ image: imageUrl })
 
-      expect(mockClient.uploadImage).not.toHaveBeenCalled()
+      expect(mockUploadImage).not.toHaveBeenCalled()
       expect(uploadedImageUrl.value).toBe(imageUrl)
-      expect(mockClient.createImageTo3D).toHaveBeenCalledWith(
+      expect(mockCreateImageTo3D).toHaveBeenCalledWith(
         expect.objectContaining({ image_url: imageUrl })
       )
     })
@@ -169,14 +162,13 @@ describe('useImageTo3D', () => {
   describe('progress tracking', () => {
     it('should update progress during generation', async () => {
       const mockFile = new File(['test'], 'test.png', { type: 'image/png' })
-      const progressUpdates: number[] = []
 
-      mockClient.uploadImage.mockResolvedValue({
+      mockUploadImage.mockResolvedValue({
         url: 'https://example.com/uploaded.png',
         filename: 'test.png',
       })
-      mockClient.createImageTo3D.mockResolvedValue({ result: 'task-id' })
-      mockClient.pollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
+      mockCreateImageTo3D.mockResolvedValue({ result: 'task-id' })
+      mockPollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
         if (options?.onProgress) {
           options.onProgress(25)
           options.onProgress(50)
@@ -204,7 +196,7 @@ describe('useImageTo3D', () => {
   describe('error handling', () => {
     it('should handle upload errors', async () => {
       const mockFile = new File(['test'], 'test.png', { type: 'image/png' })
-      mockClient.uploadImage.mockRejectedValue(new Error('Upload failed'))
+      mockUploadImage.mockRejectedValue(new Error('Upload failed'))
 
       const { generateFromImage, status, error, hasError } = useImageTo3D('test-api-key')
 
@@ -217,7 +209,7 @@ describe('useImageTo3D', () => {
 
     it('should handle generation errors', async () => {
       const imageUrl = 'https://example.com/image.png'
-      mockClient.createImageTo3D.mockRejectedValue(new Error('Generation failed'))
+      mockCreateImageTo3D.mockRejectedValue(new Error('Generation failed'))
 
       const { generateFromImage, status, error } = useImageTo3D('test-api-key')
 
@@ -230,12 +222,12 @@ describe('useImageTo3D', () => {
 
   describe('cancel', () => {
     it('should cancel ongoing generation', async () => {
-      mockClient.uploadImage.mockResolvedValue({
+      mockUploadImage.mockResolvedValue({
         url: 'https://example.com/uploaded.png',
         filename: 'test.png',
       })
-      mockClient.createImageTo3D.mockResolvedValue({ result: 'task-id' })
-      mockClient.pollTaskUntilComplete.mockImplementation(
+      mockCreateImageTo3D.mockResolvedValue({ result: 'task-id' })
+      mockPollTaskUntilComplete.mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 10000))
       )
 
@@ -253,7 +245,7 @@ describe('useImageTo3D', () => {
       expect(status.value).toBe('cancelled')
       expect(error.value).toBe('Generation cancelled by user')
       expect(isCancelled.value).toBe(true)
-      expect(mockClient.cancelTask).toHaveBeenCalledWith('task-id')
+      expect(mockCancelTask).toHaveBeenCalledWith('task-id')
     })
 
     it('should not cancel if not generating or uploading', () => {
@@ -262,18 +254,18 @@ describe('useImageTo3D', () => {
       cancel()
 
       expect(status.value).toBe('idle')
-      expect(mockClient.cancelTask).not.toHaveBeenCalled()
+      expect(mockCancelTask).not.toHaveBeenCalled()
     })
   })
 
   describe('retry', () => {
     it('should retry generation and increment retry count', async () => {
-      mockClient.uploadImage.mockResolvedValue({
+      mockUploadImage.mockResolvedValue({
         url: 'https://example.com/uploaded.png',
         filename: 'test.png',
       })
-      mockClient.createImageTo3D.mockResolvedValue({ result: 'task-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockCreateImageTo3D.mockResolvedValue({ result: 'task-id' })
+      mockPollTaskUntilComplete.mockResolvedValue({
         id: 'task-id',
         status: 'SUCCEEDED' as const,
         progress: 100,
@@ -298,8 +290,8 @@ describe('useImageTo3D', () => {
   describe('reset', () => {
     it('should reset all state to initial values', async () => {
       const imageUrl = 'https://example.com/image.png'
-      mockClient.createImageTo3D.mockResolvedValue({ result: 'task-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockCreateImageTo3D.mockResolvedValue({ result: 'task-id' })
+      mockPollTaskUntilComplete.mockResolvedValue({
         id: 'task-id',
         status: 'SUCCEEDED' as const,
         progress: 100,

@@ -2,29 +2,22 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useMeshyTask } from '../useMeshyTask'
 import { MeshyClient, MeshyTaskStatus } from '../../utils/meshyClient'
 
+const mockGetTextTo3DTaskStatus = vi.fn()
+const mockGetImageTo3DTaskStatus = vi.fn()
+const mockPollTaskUntilComplete = vi.fn()
+
 vi.mock('../../utils/meshyClient', () => {
-  class MockMeshyClient {
-    getTextTo3DTaskStatus = vi.fn()
-    getImageTo3DTaskStatus = vi.fn()
-    pollTaskUntilComplete = vi.fn()
-  }
   return {
-    MeshyClient: MockMeshyClient,
+    MeshyClient: class MockMeshyClient {
+      getTextTo3DTaskStatus = mockGetTextTo3DTaskStatus
+      getImageTo3DTaskStatus = mockGetImageTo3DTaskStatus
+      pollTaskUntilComplete = mockPollTaskUntilComplete
+    },
   }
 })
 
 describe('useMeshyTask', () => {
-  let mockClient: {
-    getTextTo3DTaskStatus: ReturnType<typeof vi.fn>
-    getImageTo3DTaskStatus: ReturnType<typeof vi.fn>
-    pollTaskUntilComplete: ReturnType<typeof vi.fn>
-  }
-
   beforeEach(() => {
-    mockClient = new (MeshyClient as never)()
-  })
-
-  afterEach(() => {
     vi.clearAllMocks()
   })
 
@@ -82,14 +75,14 @@ describe('useMeshyTask', () => {
         created_at: '2024-01-01T00:00:00Z',
       }
 
-      mockClient.getTextTo3DTaskStatus.mockResolvedValue(mockStatus)
+      mockGetTextTo3DTaskStatus.mockResolvedValue(mockStatus)
 
       const { createTask, getTaskStatus, tasks } = useMeshyTask('test-api-key')
 
       createTask('task-1', 'text-to-3d')
       await getTaskStatus('task-1', 'text-to-3d')
 
-      expect(mockClient.getTextTo3DTaskStatus).toHaveBeenCalledWith('task-1')
+      expect(mockGetTextTo3DTaskStatus).toHaveBeenCalledWith('task-1')
       const task = tasks.value.get('task-1')
       expect(task?.status).toBe('IN_PROGRESS')
       expect(task?.progress).toBe(50)
@@ -107,14 +100,14 @@ describe('useMeshyTask', () => {
         },
       }
 
-      mockClient.getImageTo3DTaskStatus.mockResolvedValue(mockStatus)
+      mockGetImageTo3DTaskStatus.mockResolvedValue(mockStatus)
 
       const { createTask, getTaskStatus, tasks } = useMeshyTask('test-api-key')
 
       createTask('task-2', 'image-to-3d')
       await getTaskStatus('task-2', 'image-to-3d')
 
-      expect(mockClient.getImageTo3DTaskStatus).toHaveBeenCalledWith('task-2')
+      expect(mockGetImageTo3DTaskStatus).toHaveBeenCalledWith('task-2')
       const task = tasks.value.get('task-2')
       expect(task?.status).toBe('SUCCEEDED')
       expect(task?.result).toBeDefined()
@@ -135,7 +128,7 @@ describe('useMeshyTask', () => {
         thumbnail_url: 'https://example.com/thumbnail.png',
       }
 
-      mockClient.pollTaskUntilComplete.mockResolvedValue(mockFinalStatus)
+      mockPollTaskUntilComplete.mockResolvedValue(mockFinalStatus)
 
       const { createTask, pollTask, tasks } = useMeshyTask('test-api-key')
 
@@ -152,7 +145,7 @@ describe('useMeshyTask', () => {
     it('should update task on progress callback', async () => {
       let progressCallbackInvoked = false
 
-      mockClient.pollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
+      mockPollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
         if (options?.onProgress) {
           options.onProgress(50, {
             id: 'task-1',
@@ -197,7 +190,7 @@ describe('useMeshyTask', () => {
     })
 
     it('should compute activeTasks', () => {
-      const { createTask, activeTasks, tasks } = useMeshyTask('test-api-key')
+      const { createTask, activeTasks } = useMeshyTask('test-api-key')
 
       createTask('task-1', 'text-to-3d', { status: 'PENDING' })
       createTask('task-2', 'text-to-3d', { status: 'IN_PROGRESS' })

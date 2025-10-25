@@ -135,8 +135,9 @@ describe('Viewer.vue', () => {
       expect(expandIcon.exists()).toBe(true)
       
       await fullscreenButton.trigger('click')
+      await wrapper.vm.$nextTick()
       
-      const closeIcon = fullscreenButton.findAll('svg')[1]
+      const closeIcon = fullscreenButton.findAll('svg')[0]
       expect(closeIcon.exists()).toBe(true)
     })
   })
