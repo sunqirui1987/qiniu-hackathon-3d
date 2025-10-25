@@ -43,9 +43,14 @@ npm run pm2:start
 PM2_INTERPRETER=bun npm run pm2:start
 ```
 
-### 停止服务
+### 停止服务并删除PM2实例
 ```bash
 npm run pm2:stop
+```
+
+### 热更新服务（零停机时间）
+```bash
+npm run pm2:reload
 ```
 
 ### 查看状态
@@ -76,8 +81,27 @@ npm run auth-server:bun
 - 提高性能和吞吐量
 - 利用多核 CPU
 - 自动负载均衡
+- 零停机时间热更新（通过 `pm2:reload`）
 
 如需调整实例数，编辑 `ecosystem.config.cjs` 中的 `instances` 字段。
+
+## 热更新 vs 重启
+
+### 热更新 (Reload)
+```bash
+npm run pm2:reload
+```
+- 零停机时间更新
+- 逐个重启实例，确保始终有实例在运行
+- 适合生产环境代码更新
+
+### 重启 (Restart)
+```bash
+pm2 restart auth-server
+```
+- 所有实例同时重启
+- 可能造成短暂服务中断
+- 适合配置更改或故障恢复
 
 ## 监控和日志
 
