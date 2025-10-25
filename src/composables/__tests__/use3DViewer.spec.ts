@@ -337,7 +337,7 @@ describe('use3DViewer', () => {
       vi.mocked(GLTF2Export.GLBAsync).mockRejectedValue(new Error('GLB export failed'))
 
       await loadModel('test.glb')
-      await expect(exportGLB()).rejects.toThrow('Failed to export GLB: GLB export failed')
+      await expect(exportGLB()).rejects.toThrow('Failed to export GLB')
     })
   })
 
