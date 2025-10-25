@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useTextTo3D } from '../useTextTo3D'
-import { MeshyClient } from '../../utils/meshyClient'
+
+const mockClient = {
+  createTextTo3DPreview: vi.fn(),
+  createTextTo3DRefine: vi.fn(),
+  pollTaskUntilComplete: vi.fn(),
+}
 
 vi.mock('../../utils/meshyClient', () => {
   return {
-    MeshyClient: vi.fn()
+    MeshyClient: vi.fn(function() {
+      return mockClient
+    })
   }
 })
 
 describe('useTextTo3D', () => {
-  let mockClient: any
-
   beforeEach(() => {
-    mockClient = {
-      createTextTo3DPreview: vi.fn(),
-      createTextTo3DRefine: vi.fn(),
-      pollTaskUntilComplete: vi.fn(),
-    }
-    vi.mocked(MeshyClient).mockImplementation(() => mockClient)
+    vi.clearAllMocks()
   })
 
   it('should initialize with correct default state', () => {
@@ -63,7 +63,7 @@ describe('useTextTo3D', () => {
 
     const mockPreviewTask = {
       id: 'preview-task-123',
-      status: 'SUCCEEDED',
+      status: 'SUCCEEDED' as const,
       progress: 100,
       model_urls: { glb: 'https://example.com/preview.glb' },
       created_at: new Date().toISOString(),
@@ -72,7 +72,7 @@ describe('useTextTo3D', () => {
 
     const mockRefineTask = {
       id: 'refine-task-456',
-      status: 'SUCCEEDED',
+      status: 'SUCCEEDED' as const,
       progress: 100,
       model_urls: { glb: 'https://example.com/model.glb' },
       created_at: new Date().toISOString(),

@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useMeshyTask } from '../useMeshyTask'
-import { MeshyClient } from '../../utils/meshyClient'
+
+const mockClient = {
+  getTextTo3DTaskStatus: vi.fn(),
+  getImageTo3DTaskStatus: vi.fn(),
+  pollTaskUntilComplete: vi.fn(),
+}
 
 vi.mock('../../utils/meshyClient', () => {
   return {
-    MeshyClient: vi.fn()
+    MeshyClient: vi.fn(function() {
+      return mockClient
+    })
   }
 })
 
 describe('useMeshyTask', () => {
-  let mockClient: any
-
   beforeEach(() => {
-    mockClient = {
-      getTextTo3DTaskStatus: vi.fn(),
-      getImageTo3DTaskStatus: vi.fn(),
-      pollTaskUntilComplete: vi.fn(),
-    }
-    vi.mocked(MeshyClient).mockImplementation(() => mockClient)
+    vi.clearAllMocks()
   })
 
   it('should initialize with empty tasks', () => {

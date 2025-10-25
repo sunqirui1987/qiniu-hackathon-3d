@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { MeshyClient, MeshyImageTo3DOptions } from '../utils/meshyClient'
+import { MeshyClient, MeshyImageTo3DOptions, MeshyTaskStatus } from '../utils/meshyClient'
 import type { Model3D } from '../types/model'
 
 export interface ImageTo3DOptions {

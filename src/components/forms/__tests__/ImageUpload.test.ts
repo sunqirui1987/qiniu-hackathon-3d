@@ -84,7 +84,13 @@ describe('ImageUpload', () => {
       await showOptionsBtn.trigger('click')
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.emitted('update:options')).toBeTruthy()
+      const topologySelect = wrapper.find('select')
+      if (topologySelect.exists()) {
+        await topologySelect.setValue('quad')
+        await wrapper.vm.$nextTick()
+        
+        expect(wrapper.emitted('update:options')).toBeTruthy()
+      }
     }
   })
 

@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useImageTo3D } from '../useImageTo3D'
-import { MeshyClient } from '../../utils/meshyClient'
+
+const mockClient = {
+  uploadImage: vi.fn(),
+  createImageTo3D: vi.fn(),
+  pollTaskUntilComplete: vi.fn(),
+}
 
 vi.mock('../../utils/meshyClient', () => {
   return {
-    MeshyClient: vi.fn()
+    MeshyClient: vi.fn(function() {
+      return mockClient
+    })
   }
 })
 
 describe('useImageTo3D', () => {
-  let mockClient: any
-
   beforeEach(() => {
-    mockClient = {
-      uploadImage: vi.fn(),
-      createImageTo3D: vi.fn(),
-      pollTaskUntilComplete: vi.fn(),
-    }
-    vi.mocked(MeshyClient).mockImplementation(() => mockClient)
+    vi.clearAllMocks()
   })
 
   it('should initialize with correct default state', () => {
