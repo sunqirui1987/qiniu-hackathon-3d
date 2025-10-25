@@ -9,47 +9,71 @@
       </p>
     </div>
 
-    <div class="mb-6 flex gap-4">
-      <div class="flex-1">
+    <div class="mb-6 space-y-4">
+      <div class="flex gap-3 justify-end">
         <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search models by name..."
-          class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+          ref="fileInput"
+          type="file"
+          accept=".json"
+          class="hidden"
+          @change="handleImportFile"
+        >
+        <Button
+          variant="secondary"
+          @click="handleImportClick"
+        >
+          Import Library
+        </Button>
+        <Button
+          variant="secondary"
+          @click="handleExportLibrary"
+        >
+          Export Library
+        </Button>
       </div>
       
-      <select
-        v-model="filterCategory"
-        class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">
-          All Categories
-        </option>
-        <option
-          v-for="category in availableCategories"
-          :key="category"
-          :value="category"
+      <div class="flex gap-4">
+        <div class="flex-1">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search models by name..."
+            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        
+        <select
+          v-model="filterCategory"
+          class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {{ category }}
-        </option>
-      </select>
-      
-      <select
-        v-model="filterTag"
-        class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">
-          All Tags
-        </option>
-        <option
-          v-for="tag in availableTags"
-          :key="tag"
-          :value="tag"
+          <option value="">
+            All Categories
+          </option>
+          <option
+            v-for="category in availableCategories"
+            :key="category"
+            :value="category"
+          >
+            {{ category }}
+          </option>
+        </select>
+        
+        <select
+          v-model="filterTag"
+          class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {{ tag }}
-        </option>
-      </select>
+          <option value="">
+            All Tags
+          </option>
+          <option
+            v-for="tag in availableTags"
+            :key="tag"
+            :value="tag"
+          >
+            {{ tag }}
+          </option>
+        </select>
+      </div>
     </div>
 
     <ModelLibrary
@@ -58,6 +82,8 @@
       @print="handlePrintModel"
       @delete="handleDeleteModel"
       @bulk-delete="handleBulkDelete"
+      @bulk-export="handleBulkExport"
+      @bulk-print="handleBulkPrint"
     />
 
     <Modal
@@ -93,14 +119,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { type ModelFile } from '@/types/model'
 import ModelLibrary from '@/components/library/ModelLibrary.vue'
 import Modal from '@/components/ui/Modal.vue'
 import Button from '@/components/ui/Button.vue'
+import { useBatchOperations } from '@/composables/useBatchOperations'
+import { indexedDB } from '@/utils/indexedDB'
 
 const router = useRouter()
+const { exportModels, printModels, importModels } = useBatchOperations()
 
 const searchQuery = ref('')
 const filterCategory = ref('')
@@ -108,6 +137,8 @@ const filterTag = ref('')
 const showDeleteConfirm = ref(false)
 const deleteTarget = ref<'single' | 'bulk'>('single')
 const deleteModelIds = ref<string[]>([])
+const isLoading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const mockModels = ref<ModelFile[]>([
   {
@@ -215,15 +246,92 @@ const handleBulkDelete = (modelIds: string[]) => {
   showDeleteConfirm.value = true
 }
 
-const confirmDelete = () => {
-  deleteModelIds.value.forEach(id => {
-    const index = mockModels.value.findIndex(m => m.id === id)
-    if (index !== -1) {
-      mockModels.value.splice(index, 1)
-    }
-  })
-  
-  showDeleteConfirm.value = false
-  deleteModelIds.value = []
+const confirmDelete = async () => {
+  try {
+    deleteModelIds.value.forEach(id => {
+      const index = mockModels.value.findIndex(m => m.id === id)
+      if (index !== -1) {
+        mockModels.value.splice(index, 1)
+      }
+    })
+    
+    await indexedDB.deleteModels(deleteModelIds.value)
+  } catch (error) {
+    console.error('Failed to delete models:', error)
+  } finally {
+    showDeleteConfirm.value = false
+    deleteModelIds.value = []
+  }
 }
+
+const handleBulkExport = async (modelIds: string[]) => {
+  try {
+    const modelsToExport = mockModels.value.filter(m => modelIds.includes(m.id))
+    await exportModels(modelsToExport)
+  } catch (error) {
+    console.error('Failed to export models:', error)
+  }
+}
+
+const handleBulkPrint = async (modelIds: string[]) => {
+  try {
+    const modelsToPrint = mockModels.value.filter(m => modelIds.includes(m.id))
+    await printModels(modelsToPrint)
+  } catch (error) {
+    console.error('Failed to print models:', error)
+  }
+}
+
+const loadModels = async () => {
+  try {
+    isLoading.value = true
+    await indexedDB.init()
+    const storedModels = await indexedDB.getAllModels()
+    
+    if (storedModels.length > 0) {
+      mockModels.value = storedModels
+    } else {
+      await indexedDB.saveModels(mockModels.value)
+    }
+  } catch (error) {
+    console.error('Failed to load models:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleImportClick = () => {
+  fileInput.value?.click()
+}
+
+const handleImportFile = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (file) {
+    try {
+      const imported = await importModels(file)
+      mockModels.value = await indexedDB.getAllModels()
+      console.log(`Successfully imported ${imported.length} models`)
+    } catch (error) {
+      console.error('Failed to import library:', error)
+    }
+    
+    if (target) {
+      target.value = ''
+    }
+  }
+}
+
+const handleExportLibrary = async () => {
+  try {
+    await exportModels(mockModels.value)
+  } catch (error) {
+    console.error('Failed to export library:', error)
+  }
+}
+
+onMounted(() => {
+  loadModels()
+})
 </script>

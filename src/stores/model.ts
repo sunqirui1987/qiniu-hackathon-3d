@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Model3D, GenerateTask } from '@/types/model'
+import { indexedDB } from '@/utils/indexedDB'
 
 interface ModelCache {
   [key: string]: Model3D
@@ -167,6 +168,51 @@ export const useModelStore = defineStore('model', () => {
     return taskQueue.value.findIndex(item => item.task.id === taskId)
   }
 
+  async function syncToIndexedDB() {
+    try {
+      const models = modelHistory.value.map(model => ({
+        id: model.id,
+        name: model.name,
+        path: model.url,
+        format: model.format,
+        size: model.size || 0,
+        createdAt: model.createdAt,
+        updatedAt: model.updatedAt,
+        thumbnail: model.thumbnail,
+        tags: [],
+        category: undefined,
+        metadata: model.metadata
+      }))
+      await indexedDB.saveModels(models)
+    } catch (error) {
+      console.error('Failed to sync to IndexedDB:', error)
+    }
+  }
+
+  async function loadFromIndexedDB() {
+    try {
+      await indexedDB.init()
+      const models = await indexedDB.getAllModels()
+      models.forEach(model => {
+        const model3d: Model3D = {
+          id: model.id,
+          name: model.name,
+          url: model.path,
+          format: model.format,
+          createdAt: model.createdAt,
+          updatedAt: model.updatedAt,
+          thumbnail: model.thumbnail,
+          size: model.size,
+          metadata: model.metadata
+        }
+        modelHistory.value.push(model3d)
+        cacheModel(model3d)
+      })
+    } catch (error) {
+      console.error('Failed to load from IndexedDB:', error)
+    }
+  }
+
   function exportHistory(): string {
     return JSON.stringify({
       models: modelHistory.value,
@@ -225,6 +271,8 @@ export const useModelStore = defineStore('model', () => {
     clearQueue,
     getQueuePosition,
     exportHistory,
-    importHistory
+    importHistory,
+    syncToIndexedDB,
+    loadFromIndexedDB
   }
 })

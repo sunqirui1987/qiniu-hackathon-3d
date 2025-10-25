@@ -35,13 +35,29 @@
           </option>
         </select>
         
-        <Button
+        <div
           v-if="selectedModels.length > 0"
-          variant="danger"
-          @click="handleBulkDelete"
+          class="flex gap-2"
         >
-          Delete Selected ({{ selectedModels.length }})
-        </Button>
+          <Button
+            variant="secondary"
+            @click="handleBulkExport"
+          >
+            Export ({{ selectedModels.length }})
+          </Button>
+          <Button
+            variant="secondary"
+            @click="handleBulkPrint"
+          >
+            Print ({{ selectedModels.length }})
+          </Button>
+          <Button
+            variant="danger"
+            @click="handleBulkDelete"
+          >
+            Delete ({{ selectedModels.length }})
+          </Button>
+        </div>
       </div>
     </div>
     
@@ -87,7 +103,7 @@
           type="checkbox"
           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           @change="handleSelectAll"
-        />
+        >
         <label
           for="select-all"
           class="cursor-pointer"
@@ -110,7 +126,7 @@
             type="checkbox"
             :value="model.id"
             class="absolute top-4 left-4 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded z-10"
-          />
+          >
           
           <ModelCard
             :model="model"
@@ -144,6 +160,8 @@ const emit = defineEmits<{
   print: [model: ModelFile]
   delete: [model: ModelFile]
   bulkDelete: [modelIds: string[]]
+  bulkExport: [modelIds: string[]]
+  bulkPrint: [modelIds: string[]]
 }>()
 
 const sortBy = ref<string>('date-desc')
@@ -210,6 +228,18 @@ const handleBulkDelete = () => {
     emit('bulkDelete', selectedModels.value)
     selectedModels.value = []
     selectAll.value = false
+  }
+}
+
+const handleBulkExport = () => {
+  if (selectedModels.value.length > 0) {
+    emit('bulkExport', selectedModels.value)
+  }
+}
+
+const handleBulkPrint = () => {
+  if (selectedModels.value.length > 0) {
+    emit('bulkPrint', selectedModels.value)
   }
 }
 </script>
