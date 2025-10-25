@@ -3,12 +3,9 @@ module.exports = {
     {
       name: 'auth-server',
       script: './auth-server.js',
+      interpreter: process.env.PM2_INTERPRETER || 'node',
       instances: 2,
       exec_mode: 'cluster',
-      env: {
-        NODE_ENV: 'development',
-        AUTH_PORT: 3001
-      },
       env_production: {
         NODE_ENV: 'production',
         AUTH_PORT: 3001
