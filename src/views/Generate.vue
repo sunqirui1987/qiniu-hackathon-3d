@@ -158,13 +158,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useModelStore } from '@/stores/model'
 import TextInput from '../components/forms/TextInput.vue'
 import ImageUpload from '../components/forms/ImageUpload.vue'
 import GenerateProgress from '../components/generate/GenerateProgress.vue'
 import type { Model3D } from '../types/model'
+import MeshyClient from '@/utils/meshyClient'
+import type { MeshyTaskStatus } from '@/utils/meshyClient'
 
 const modelStore = useModelStore()
 
@@ -195,6 +197,8 @@ interface TaskDetails {
 }
 
 const router = useRouter()
+
+const meshyClient = new MeshyClient('')
 
 const generationMode = ref<GenerationMode>('text')
 const textPrompt = ref<string>('')
@@ -253,107 +257,160 @@ const handleGenerate = async () => {
 }
 
 const generateFromText = async () => {
-  currentStatus.value = 'generating'
-  
-  taskDetails.value = {
-    id: 'demo-task-' + Date.now(),
-    type: 'text-to-3d',
-    createdAt: new Date(),
-  }
+  try {
+    currentStatus.value = 'generating'
+    currentProgress.value = 0
+    estimatedTime.value = '约4-6分钟'
 
-  const simulateProgress = setInterval(() => {
-    if (currentProgress.value < 90) {
-      currentProgress.value += Math.random() * 10
-      
-      if (currentProgress.value > 50) {
-        estimatedTime.value = '约2分钟'
-      } else {
-        estimatedTime.value = '约4分钟'
-      }
-    }
-  }, 500)
+    const previewResponse = await meshyClient.createTextTo3DPreview({
+      prompt: textPrompt.value,
+      art_style: textOptions.value.artStyle,
+      ai_model: textOptions.value.aiModel,
+      topology: textOptions.value.topology,
+      target_polycount: textOptions.value.targetPolycount,
+      seed: textOptions.value.seed,
+    })
 
-  setTimeout(() => {
-    clearInterval(simulateProgress)
-    currentProgress.value = 100
-    currentStatus.value = 'completed'
-    estimatedTime.value = undefined
-    
-    const newModel: Model3D = {
-      id: taskDetails.value!.id,
-      name: textPrompt.value.substring(0, 50),
-      url: '/demo-model.glb',
-      format: 'glb',
+    const previewTaskId = previewResponse.result
+    taskDetails.value = {
+      id: previewTaskId,
+      type: 'text-to-3d',
       createdAt: new Date(),
-      updatedAt: new Date(),
-      thumbnail: 'https://via.placeholder.com/300x300?text=3D+Model',
     }
-    
-    generationHistory.value.unshift(newModel)
-    modelStore.addModel(newModel)
-    
-    setTimeout(() => {
-      router.push({
-        name: 'viewer',
-        query: { modelId: newModel.id, fromGenerate: 'true' }
+
+    const previewStatus = await meshyClient.pollTaskUntilComplete(
+      previewTaskId,
+      'text-to-3d',
+      {
+        onProgress: (progress, status) => {
+          currentProgress.value = progress * 0.5
+          if (status.thumbnail_url) {
+            previewUrl.value = status.thumbnail_url
+          }
+        },
+      }
+    )
+
+    if (textOptions.value.enablePBR) {
+      currentProgress.value = 50
+      estimatedTime.value = '约2-3分钟'
+
+      const refineResponse = await meshyClient.createTextTo3DRefine({
+        preview_task_id: previewTaskId,
+        enable_pbr: true,
+        texture_prompt: textOptions.value.texturePrompt,
       })
-    }, 1500)
-  }, 5000)
+
+      const refineTaskId = refineResponse.result
+      const refineStatus = await meshyClient.pollTaskUntilComplete(
+        refineTaskId,
+        'text-to-3d',
+        {
+          onProgress: (progress, status) => {
+            currentProgress.value = 50 + progress * 0.5
+            if (status.thumbnail_url) {
+              previewUrl.value = status.thumbnail_url
+            }
+          },
+        }
+      )
+
+      await handleTaskCompletion(refineStatus, 'text')
+    } else {
+      currentProgress.value = 100
+      await handleTaskCompletion(previewStatus, 'text')
+    }
+  } catch (error) {
+    throw error
+  }
 }
 
 const generateFromImage = async () => {
   if (!selectedImage.value) return
 
-  currentStatus.value = 'uploading'
-  currentProgress.value = 20
+  try {
+    currentStatus.value = 'uploading'
+    currentProgress.value = 10
+    estimatedTime.value = '上传中...'
 
-  await new Promise(resolve => setTimeout(resolve, 1000))
+    const uploadResult = await meshyClient.uploadImage(selectedImage.value)
 
-  currentStatus.value = 'generating'
-  currentProgress.value = 30
-  
-  taskDetails.value = {
-    id: 'demo-task-' + Date.now(),
-    type: 'image-to-3d',
-    createdAt: new Date(),
+    currentStatus.value = 'generating'
+    currentProgress.value = 20
+    estimatedTime.value = '约3-5分钟'
+
+    const response = await meshyClient.createImageTo3D({
+      image_url: uploadResult.url,
+      topology: imageOptions.value.topology,
+      target_polycount: imageOptions.value.targetPolycount,
+      should_texture: imageOptions.value.shouldTexture,
+      enable_pbr: imageOptions.value.enablePBR,
+      texture_prompt: imageOptions.value.texturePrompt,
+    })
+
+    const taskId = response.result
+    taskDetails.value = {
+      id: taskId,
+      type: 'image-to-3d',
+      createdAt: new Date(),
+    }
+
+    const finalStatus = await meshyClient.pollTaskUntilComplete(
+      taskId,
+      'image-to-3d',
+      {
+        onProgress: (progress, status) => {
+          currentProgress.value = 20 + progress * 0.8
+          if (status.thumbnail_url) {
+            previewUrl.value = status.thumbnail_url
+          }
+        },
+      }
+    )
+
+    await handleTaskCompletion(finalStatus, 'image')
+  } catch (error) {
+    throw error
+  }
+}
+
+const handleTaskCompletion = async (status: MeshyTaskStatus, mode: 'text' | 'image') => {
+  currentProgress.value = 100
+  currentStatus.value = 'completed'
+  estimatedTime.value = undefined
+
+  const modelUrl = status.model_urls?.glb || status.model_urls?.fbx || status.model_urls?.obj
+  if (!modelUrl) {
+    throw new Error('No model URL found in task result')
   }
 
-  const simulateProgress = setInterval(() => {
-    if (currentProgress.value < 90) {
-      currentProgress.value += Math.random() * 10
-      estimatedTime.value = '约3分钟'
-    }
-  }, 500)
+  const newModel: Model3D = {
+    id: status.id,
+    name: mode === 'text' 
+      ? textPrompt.value.substring(0, 50) 
+      : selectedImage.value?.name.replace(/\.[^/.]+$/, '') || 'Image Model',
+    url: modelUrl,
+    format: 'glb',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    thumbnail: status.thumbnail_url || 'https://via.placeholder.com/300x300?text=3D+Model',
+  }
+
+  generationHistory.value.unshift(newModel)
+  modelStore.addModel(newModel)
 
   setTimeout(() => {
-    clearInterval(simulateProgress)
-    currentProgress.value = 100
-    currentStatus.value = 'completed'
-    estimatedTime.value = undefined
-    
-    const newModel: Model3D = {
-      id: taskDetails.value!.id,
-      name: selectedImage.value?.name.replace(/\.[^/.]+$/, '') || 'Image Model',
-      url: '/demo-model.glb',
-      format: 'glb',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      thumbnail: 'https://via.placeholder.com/300x300?text=3D+Model',
-    }
-    
-    generationHistory.value.unshift(newModel)
-    modelStore.addModel(newModel)
-    
-    setTimeout(() => {
-      router.push({
-        name: 'viewer',
-        query: { modelId: newModel.id, fromGenerate: 'true' }
-      })
-    }, 1500)
-  }, 5000)
+    router.push({
+      name: 'viewer',
+      query: { modelId: newModel.id, fromGenerate: 'true' }
+    })
+  }, 1500)
 }
 
 const handleCancelGeneration = () => {
+  if (taskDetails.value) {
+    meshyClient.cancelTask(taskDetails.value.id)
+  }
   currentStatus.value = 'idle'
   currentProgress.value = 0
   estimatedTime.value = undefined
@@ -386,4 +443,8 @@ const formatDate = (date: Date): string => {
     minute: '2-digit',
   })
 }
+
+onUnmounted(() => {
+  meshyClient.cancelAllTasks()
+})
 </script>
