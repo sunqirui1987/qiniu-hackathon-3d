@@ -137,14 +137,14 @@ watch(() => props.modelUrl, (newUrl) => {
   }
 })
 
-watch(modelInfo, (info) => {
+watch(() => modelInfo.value, (info) => {
   if (info) {
     emit('loaded', info)
     emit('modelLoaded')
   }
 })
 
-watch(loadError, (error) => {
+watch(() => loadError.value, (error) => {
   if (error) {
     emit('error', error)
     emit('modelError', error)
