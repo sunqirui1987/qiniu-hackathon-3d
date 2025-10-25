@@ -1,7 +1,17 @@
 import { ref, computed } from 'vue'
-import { MeshyClient, MeshyImageTo3DOptions } from '../utils/meshyClient'
+import {  MeshyImageTo3DOptions, meshyClient, type MeshyTaskStatus } from '../utils/meshyClient'
 import type { Model3D } from '../types/model'
 import { getUserFriendlyErrorMessage } from '../utils/errorHandler'
+
+// 将 File 对象转换为 base64 字符串
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
 export interface ImageTo3DOptions {
   image: File | string
@@ -16,8 +26,8 @@ export interface ImageTo3DOptions {
   texturePrompt?: string
 }
 
-export function useImageTo3D(apiKey: string) {
-  const client = new MeshyClient(apiKey)
+export function useImageTo3D() {
+  const client = meshyClient
   
   const status = ref<'idle' | 'uploading' | 'generating' | 'completed' | 'error' | 'cancelled'>('idle')
   const progress = ref<number>(0)
@@ -45,11 +55,13 @@ export function useImageTo3D(apiKey: string) {
       let imageUrl: string
 
       if (typeof options.image === 'string') {
+        // 支持 URL 或 base64 格式
         imageUrl = options.image
         uploadedImageUrl.value = imageUrl
       } else {
-        const uploadResponse = await client.uploadImage(options.image)
-        imageUrl = uploadResponse.url
+        // 将 File 对象转换为 base64
+        const base64 = await fileToBase64(options.image)
+        imageUrl = base64
         uploadedImageUrl.value = imageUrl
       }
 

@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { MeshyClient, MeshyTextTo3DOptions, MeshyTaskStatus } from '../utils/meshyClient'
+import {  MeshyTextTo3DOptions, MeshyTaskStatus, meshyClient } from '../utils/meshyClient'
 import type { Model3D } from '../types/model'
 import { getUserFriendlyErrorMessage } from '../utils/errorHandler'
 
@@ -27,8 +27,8 @@ export interface TextTo3DState {
   result: Model3D | null
 }
 
-export function useTextTo3D(apiKey: string) {
-  const client = new MeshyClient(apiKey)
+export function useTextTo3D() {
+  const client = meshyClient
   
   const status = ref<'idle' | 'generating' | 'completed' | 'error' | 'cancelled'>('idle')
   const progress = ref<number>(0)

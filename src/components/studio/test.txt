@@ -1,0 +1,93 @@
+文生3D：
+import axios from 'axios'
+
+const headers = { Authorization: `Bearer ${YOUR_API_KEY}` };
+
+try {
+ const response = await axios.get(
+   `https://api.meshy.ai/openapi/v2/text-to-3d?page_size=10`,
+   { headers }
+ );
+ console.log(response.data);
+} catch (error) {
+ console.error(error);
+}
+
+[
+  {
+    "id": "018a210d-8ba4-705c-b111-1f1776f7f578",
+    "model_urls": {
+      "glb": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.glb?Expires=***",
+      "fbx": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.fbx?Expires=***",
+      "obj": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.obj?Expires=***",
+      "mtl": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.mtl?Expires=***",
+      "usdz": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.usdz?Expires=***"
+    },
+    "thumbnail_url": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/preview.png?Expires=***",
+    "prompt": "a monster mask",
+    "art_style": "realistic",
+    "progress": 100,
+    "started_at": 1692771667037,
+    "created_at": 1692771650657,
+    "finished_at": 1692771669037,
+    "status": "SUCCEEDED",
+    "texture_urls": [
+      {
+        "base_color": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/texture_0.png?Expires=***"
+      }
+    ],
+    "preceding_tasks": 0,
+    "task_error": {
+      "message": ""
+    }
+  }
+]
+
+
+图生3D：
+import axios from 'axios'
+
+const headers = { Authorization: `Bearer ${YOUR_API_KEY}` };
+
+try {
+ const response = await axios.get(
+   `https://api.meshy.ai/openapi/v1/image-to-3d?page_size=10`,
+{ headers }
+  );
+ console.log(response.data);
+} catch (error) {
+ console.error(error);
+}
+
+
+[
+  {
+    "id": "018a210d-8ba4-705c-b111-1f1776f7f578",
+    "model_urls": {
+      "glb": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.glb?Expires=***",
+      "fbx": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.fbx?Expires=***",
+      "obj": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.obj?Expires=***",
+      "usdz": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/model.usdz?Expires=***"
+    },
+    "thumbnail_url": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/preview.png?Expires=***",
+    "texture_prompt": "",
+    "progress": 100,
+    "started_at": 1692771667037,
+    "created_at": 1692771650657,
+    "expires_at": 1692771679037,
+    "finished_at": 1692771669037,
+    "status": "SUCCEEDED",
+    "texture_urls": [
+      {
+        "base_color": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/texture_0.png?Expires=***",
+        "metallic": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/texture_0_metallic.png?Expires=XXX",
+        "normal": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/texture_0_roughness.png?Expires=XXX",
+        "roughness": "https://assets.meshy.ai/***/tasks/018a210d-8ba4-705c-b111-1f1776f7f578/output/texture_0_normal.png?Expires=XXX"
+      }
+    ],
+    "preceding_tasks": 0,
+    "task_error": {
+      "message": ""
+    }
+  }
+]

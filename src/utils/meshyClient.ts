@@ -91,13 +91,11 @@ export interface MeshyApiError {
 
 export class MeshyClient {
   private client: AxiosInstance
-  private apiKey: string
   private abortControllers: Map<string, AbortController> = new Map()
   private taskStatusCache: Map<string, { status: MeshyTaskStatus; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 3000
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey
+  constructor() {
     const serverBaseUrl = import.meta.env.VITE_AUTH_SERVER_URL || 'http://localhost:3001'
     this.client = axios.create({
       baseURL: `${serverBaseUrl}/api/meshy`,
@@ -255,6 +253,53 @@ export class MeshyClient {
     return response.data
   }
 
+  async getTextTo3DTasks(params?: {
+    page_size?: number
+    page_num?: number
+  }): Promise<MeshyTaskStatus[]> {
+    const { page_size = 10, page_num = 1 } = params || {}
+    const response = await this.client.get(`/openapi/v2/text-to-3d`, {
+      params: { page_size, page_num }
+    })
+    // API返回的是数组，直接返回
+    return Array.isArray(response.data) ? response.data : []
+  }
+
+  async getImageTo3DTasks(params?: {
+    page_size?: number
+    page_num?: number
+  }): Promise<MeshyTaskStatus[]> {
+    const { page_size = 10, page_num = 1 } = params || {}
+    const response = await this.client.get(`/openapi/v1/image-to-3d`, {
+      params: { page_size, page_num }
+    })
+    // API返回的是数组，直接返回
+    return Array.isArray(response.data) ? response.data : []
+  }
+
+  async getAllTasks(params?: {
+    page_size?: number
+    page_num?: number
+  }): Promise<{ textTo3D: MeshyTaskStatus[], imageTo3D: MeshyTaskStatus[] }> {
+    try {
+      const [textTo3DTasks, imageTo3DTasks] = await Promise.all([
+        this.getTextTo3DTasks(params),
+        this.getImageTo3DTasks(params)
+      ])
+      
+      return {
+        textTo3D: textTo3DTasks,
+        imageTo3D: imageTo3DTasks
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+      return {
+        textTo3D: [],
+        imageTo3D: []
+      }
+    }
+  }
+
   async deleteTask(taskId: string, taskType: 'text-to-3d' | 'image-to-3d' | 'remesh' | 'retexture'): Promise<void> {
     const endpoint = `/openapi/v2/${taskType}/${taskId}`
     await this.client.delete(endpoint)
@@ -402,4 +447,6 @@ export class MeshyClient {
   }
 }
 
-export default MeshyClient
+// 创建默认的 meshyClient 实例
+export const meshyClient = new MeshyClient()
+

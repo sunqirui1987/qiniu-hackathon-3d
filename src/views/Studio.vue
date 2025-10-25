@@ -43,12 +43,12 @@
 
     <!-- 右侧历史面板组件 -->
     <RightHistoryPanel
-      :history="generationHistory"
-      :active-filter="historyFilter"
-      @filter-change="historyFilter = $event"
+      :active-category="historyCategory"
+      :text-to-3d-tasks="textTo3DTasks"
+      :image-to-3d-tasks="imageTo3DTasks"
+      @category-change="historyCategory = $event"
       @load-history-item="loadHistoryItem"
-      @download-item="downloadHistoryItem"
-      @delete-item="deleteHistoryItem"
+      @delete-history-item="deleteHistoryItem"
       @clear-history="clearHistory"
     />
 
@@ -82,6 +82,7 @@ import CenterViewer from '@/components/studio/CenterViewer.vue'
 import RightHistoryPanel from '@/components/studio/RightHistoryPanel.vue'
 import { useTextTo3D } from '@/composables/useTextTo3D'
 import { useImageTo3D } from '@/composables/useImageTo3D'
+import { meshyClient } from '@/utils/meshyClient'
 
 // 路由
 const route = useRoute()
@@ -93,7 +94,12 @@ const { generateFromImage, isGenerating: imageGenerating, progress: imageProgres
 // 响应式数据
 const activeTab = ref('text-to-3d')
 const currentModel = ref<string>('')
-const historyFilter = ref('all')
+const historyCategory = ref('all')
+
+// Meshy API 任务列表
+const textTo3DTasks = ref([])
+const imageTo3DTasks = ref([])
+const isLoadingHistory = ref(false)
 
 // 文本生成相关
 const textPrompt = ref('')
@@ -131,41 +137,7 @@ const modelInfo = ref({
 // 处理状态
 const isProcessing = ref(false)
 
-// 生成历史
-const generationHistory = ref([
-  {
-    id: '1',
-    name: '可爱小猫',
-    type: 'text-to-3d',
-    status: 'completed',
-    date: '2024-01-15 14:30',
-    prompt: '一只可爱的小猫咪，坐着的姿势',
-    thumbnail: '/api/placeholder/80/80',
-    faces: 5420,
-    fileSize: '2.3MB',
-    downloadUrl: '/models/cat.glb'
-  },
-  {
-    id: '2',
-    name: '现代椅子',
-    type: 'image-to-3d',
-    status: 'generating',
-    date: '2024-01-15 15:45',
-    prompt: '现代简约风格的椅子',
-    thumbnail: '/api/placeholder/80/80',
-    progress: 65
-  },
-  {
-    id: '3',
-    name: '古典花瓶',
-    type: 'text-to-3d',
-    status: 'failed',
-    date: '2024-01-15 16:20',
-    prompt: '古典风格的陶瓷花瓶',
-    thumbnail: '/api/placeholder/80/80',
-    error: '生成失败：模型复杂度过高'
-  }
-])
+
 
 // 通知
 const notification = reactive({
@@ -188,19 +160,44 @@ const generationStatus = computed(() => {
 })
 
 // 方法
+const loadHistoryData = async () => {
+  isLoadingHistory.value = true
+  try {
+    const [textTasks, imageTasks] = await Promise.all([
+      meshyClient.getTextTo3DTasks(),
+      meshyClient.getImageTo3DTasks()
+    ])
+    
+    console.log('🚀 Studio.vue - 原始API数据:')
+    console.log('textTasks from API:', textTasks)
+    console.log('imageTasks from API:', imageTasks)
+    
+    // 为任务添加类型标识
+    textTo3DTasks.value = textTasks.map(task => ({ ...task, type: 'text-to-3d' }))
+    imageTo3DTasks.value = imageTasks.map(task => ({ ...task, type: 'image-to-3d' }))
+    
+    console.log('🎯 Studio.vue - 处理后的数据:')
+    console.log('textTo3DTasks.value:', textTo3DTasks.value)
+    console.log('imageTo3DTasks.value:', imageTo3DTasks.value)
+    console.log('historyCategory.value:', historyCategory.value)
+    
+    console.log('历史数据加载成功:', { textTasks: textTasks.length, imageTasks: imageTasks.length })
+  } catch (error) {
+    console.error('加载历史数据失败:', error)
+    showNotification('加载历史数据失败', 'error')
+  } finally {
+    isLoadingHistory.value = false
+  }
+}
+
 const handleTextTo3D = async (prompt: string, options: any) => {
   try {
     const result = await generateFromText(prompt, options)
     if (result) {
       currentModel.value = result.modelUrl
-      addToHistory({
-        name: prompt.slice(0, 20) + '...',
-        type: 'text-to-3d',
-        status: 'completed',
-        prompt,
-        modelUrl: result.modelUrl
-      })
       showNotification('3D模型生成成功！', 'success')
+      // 重新加载历史数据以获取最新的任务
+      await loadHistoryData()
     }
   } catch (error) {
     console.error('Text to 3D generation failed:', error)
@@ -213,14 +210,9 @@ const handleImageTo3D = async (image: File, options: any) => {
     const result = await generateFromImage(image, options)
     if (result) {
       currentModel.value = result.modelUrl
-      addToHistory({
-        name: '图片生成模型',
-        type: 'image-to-3d',
-        status: 'completed',
-        prompt: '从图片生成',
-        modelUrl: result.modelUrl
-      })
       showNotification('3D模型生成成功！', 'success')
+      // 重新加载历史数据以获取最新的任务
+      await loadHistoryData()
     }
   } catch (error) {
     console.error('Image to 3D generation failed:', error)
@@ -261,14 +253,8 @@ const handleTextureGeneration = async (prompt: string, options: any) => {
 }
 
 const handleModelImported = (file: File) => {
-  // 处理模型导入后的逻辑，比如添加到历史记录
-  addToHistory({
-    name: file.name.replace(/\.[^/.]+$/, ''),
-    type: 'imported',
-    status: 'completed',
-    prompt: '导入的模型',
-    modelUrl: currentModel.value
-  })
+  // 处理模型导入后的逻辑
+  showNotification(`模型 ${file.name} 导入成功`, 'success')
 }
 
 const handleModelExported = () => {
@@ -285,46 +271,53 @@ const handleViewerError = (error: string) => {
 }
 
 const loadHistoryItem = (item: any) => {
-  if (item.modelUrl) {
-    currentModel.value = item.modelUrl
+  // 处理Meshy API格式的模型URL
+  let modelUrl = ''
+  
+  if (item.model_urls?.glb) {
+    modelUrl = item.model_urls.glb
+  } else if (item.model_urls?.obj) {
+    modelUrl = item.model_urls.obj
+  } else if (item.modelUrl) {
+    // 兼容旧格式
+    modelUrl = item.modelUrl
+  }
+  
+  if (modelUrl) {
+    currentModel.value = modelUrl
     showNotification('历史模型加载成功！', 'success')
+  } else {
+    showNotification('该任务暂无可用的模型文件', 'error')
   }
 }
 
-const downloadHistoryItem = (item: any) => {
-  if (item.downloadUrl) {
-    const link = document.createElement('a')
-    link.href = item.downloadUrl
-    link.download = `${item.name}.glb`
-    link.click()
-    showNotification('下载开始！', 'success')
-  }
-}
-
-const deleteHistoryItem = (item: any) => {
-  const index = generationHistory.value.findIndex(h => h.id === item.id)
-  if (index > -1) {
-    generationHistory.value.splice(index, 1)
+const deleteHistoryItem = (itemId: string) => {
+  // 从文本生成任务中删除
+  const textIndex = textTo3DTasks.value.findIndex(h => h.id === itemId)
+  if (textIndex > -1) {
+    textTo3DTasks.value.splice(textIndex, 1)
     showNotification('历史记录已删除', 'success')
+    return
   }
+  
+  // 从图片生成任务中删除
+  const imageIndex = imageTo3DTasks.value.findIndex(h => h.id === itemId)
+  if (imageIndex > -1) {
+    imageTo3DTasks.value.splice(imageIndex, 1)
+    showNotification('历史记录已删除', 'success')
+    return
+  }
+  
+  showNotification('未找到要删除的记录', 'error')
 }
 
 const clearHistory = () => {
-  generationHistory.value = []
+  textTo3DTasks.value = []
+  imageTo3DTasks.value = []
   showNotification('历史记录已清空', 'success')
 }
 
-const addToHistory = (item: any) => {
-  const newItem = {
-    id: Date.now().toString(),
-    date: new Date().toLocaleString('zh-CN'),
-    thumbnail: '/api/placeholder/80/80',
-    faces: Math.floor(Math.random() * 10000) + 1000,
-    fileSize: (Math.random() * 5 + 0.5).toFixed(1) + 'MB',
-    ...item
-  }
-  generationHistory.value.unshift(newItem)
-}
+
 
 const showNotification = (messageOrData: string | { message: string, type: 'success' | 'error' }, type?: 'success' | 'error') => {
   notification.show = true
@@ -346,6 +339,9 @@ onMounted(() => {
   if (route.query.model) {
     currentModel.value = route.query.model as string
   }
+  
+  // 加载历史数据
+  loadHistoryData()
 })
 </script>
 

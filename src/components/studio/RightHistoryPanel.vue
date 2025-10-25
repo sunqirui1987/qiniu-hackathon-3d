@@ -15,146 +15,90 @@
         </button>
       </div>
 
-      <!-- 筛选器 -->
-      <div class="filter-tabs flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+      <!-- 分类标签页 -->
+      <div class="category-tabs flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
         <button
-          v-for="filter in filters"
-          :key="filter.id"
-          @click="$emit('filter-change', filter.id)"
+          v-for="category in categories"
+          :key="category.id"
+          @click="$emit('category-change', category.id)"
           :class="[
             'flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors',
-            activeFilter === filter.id
+            activeCategory === category.id
               ? 'bg-blue-600 text-white'
               : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
           ]"
         >
-          {{ filter.name }}
+          {{ category.name }}
         </button>
       </div>
     </div>
 
     <!-- 历史列表 -->
     <div class="history-list flex-1 overflow-y-auto p-4">
-      <div v-if="filteredHistory.length === 0" class="empty-state text-center py-12">
+      <div v-if="displayHistory.length === 0" class="empty-state text-center py-12">
         <svg class="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
         <p class="text-gray-500 dark:text-gray-500 text-sm">暂无生成历史</p>
       </div>
 
-      <div v-else class="space-y-3">
+      <!-- 网格布局 -->
+      <div v-else class="grid grid-cols-3 gap-3">
         <div
-          v-for="item in filteredHistory"
+          v-for="item in displayHistory"
           :key="item.id"
           @click="$emit('load-history-item', item)"
-          class="history-item bg-white dark:bg-gray-750 rounded-lg p-4 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
+          class="history-item group relative bg-gray-800 rounded-lg overflow-hidden cursor-pointer transition-all hover:ring-2 hover:ring-blue-500 hover:ring-opacity-50"
         >
-          <!-- 缩略图和基本信息 -->
-          <div class="flex gap-3 mb-3">
-            <div class="thumbnail w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-lg overflow-hidden flex-shrink-0">
-              <img
-                v-if="item.thumbnail"
-                :src="item.thumbnail"
-                :alt="item.name"
-                class="w-full h-full object-cover"
+          <!-- 缩略图 -->
+          <div class="aspect-square bg-gray-700 relative">
+            <img
+              v-if="item.thumbnail_url"
+              :src="item.thumbnail_url"
+              :alt="getTaskName(item)"
+              class="w-full h-full object-cover"
+            >
+            <div v-else class="w-full h-full flex items-center justify-center">
+              <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+
+            <!-- 状态指示器 -->
+            <div class="absolute top-2 left-2">
+              <span
+                :class="[
+                  'px-1.5 py-0.5 text-xs rounded-full text-white',
+                  getStatusBadgeClass(item.status)
+                ]"
               >
-              <div v-else class="w-full h-full flex items-center justify-center">
-                <svg class="w-8 h-8 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
+                {{ getStatusIcon(item.status) }}
+              </span>
             </div>
 
-            <div class="flex-1 min-w-0">
-              <h4 class="text-sm font-medium text-gray-900 dark:text-white truncate mb-1">{{ item.name }}</h4>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ formatDate(item.createdAt) }}</p>
-              
-              <!-- 状态标签 -->
-              <div class="flex items-center gap-2">
-                <span
-                  :class="[
-                    'px-2 py-1 text-xs rounded-full',
-                    getStatusClass(item.status)
-                  ]"
-                >
-                  {{ getStatusText(item.status) }}
-                </span>
-                <span
-                  :class="[
-                    'px-2 py-1 text-xs rounded-full',
-                    getTypeClass(item.type)
-                  ]"
-                >
-                  {{ getTypeText(item.type) }}
-                </span>
-              </div>
-            </div>
-          </div>
 
-          <!-- 详细信息 -->
-          <div class="details space-y-2">
-            <div v-if="item.prompt" class="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
-              <span class="text-gray-500 dark:text-gray-500">提示词:</span> {{ item.prompt }}
-            </div>
-            
-            <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-              <span>{{ item.modelInfo?.faces || 'N/A' }} 面</span>
-              <span>{{ formatFileSize(item.fileSize) }}</span>
-            </div>
 
             <!-- 进度条（仅在生成中显示） -->
-            <div v-if="item.status === 'generating'" class="progress mt-2">
-              <div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-1.5">
+            <div v-if="['PENDING', 'IN_PROGRESS'].includes(item.status)" class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+              <div class="w-full bg-gray-600 rounded-full h-1">
                 <div 
-                  class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                  class="bg-blue-500 h-1 rounded-full transition-all duration-300"
                   :style="{ width: `${item.progress || 0}%` }"
                 ></div>
               </div>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ item.progressText || '生成中...' }}</p>
+              <p class="text-xs text-white mt-1 text-center">{{ item.progress || 0 }}%</p>
             </div>
+
+
           </div>
 
-          <!-- 操作按钮 -->
-          <div class="actions flex gap-2 mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
-            <button
-              v-if="item.status === 'completed'"
-              @click.stop="$emit('download-model', item)"
-              class="flex-1 py-1.5 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-            >
-              下载
-            </button>
-            <button
-              v-if="item.status === 'completed'"
-              @click.stop="$emit('load-in-viewer', item)"
-              class="flex-1 py-1.5 px-3 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-            >
-              查看
-            </button>
-            <button
-              @click.stop="$emit('delete-history-item', item)"
-              class="py-1.5 px-3 text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 border border-red-500 dark:border-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded transition-colors"
-            >
-              删除
-            </button>
+          <!-- 底部信息（可选，简化版） -->
+          <div class="p-2 bg-gray-800">
+            <p class="text-xs text-gray-300 truncate" :title="getTaskName(item)">
+              {{ getTaskName(item) }}
+            </p>
+            <p class="text-xs text-gray-500">{{ formatDate(item.created_at) }}</p>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 底部统计信息 -->
-    <div class="footer p-4 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
-      <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-        <div class="flex justify-between">
-          <span>总计:</span>
-          <span>{{ history.length }} 个项目</span>
-        </div>
-        <div class="flex justify-between">
-          <span>已完成:</span>
-          <span>{{ completedCount }} 个</span>
-        </div>
-        <div class="flex justify-between">
-          <span>生成中:</span>
-          <span>{{ generatingCount }} 个</span>
         </div>
       </div>
     </div>
@@ -164,71 +108,79 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// 类型定义
+// 类型定义 - 匹配Meshy API响应格式
 interface HistoryItem {
   id: string
-  name: string
-  type: 'text-to-3d' | 'image-to-3d' | 'retopology' | 'texture'
-  status: 'generating' | 'completed' | 'failed'
-  createdAt?: Date
-  prompt?: string
-  thumbnail?: string
-  fileSize?: number
-  modelInfo?: {
-    faces: number
-    vertices: number
+  status: 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED' | 'CANCELED'
+  progress: number
+  model_urls?: {
+    glb?: string
+    fbx?: string
+    obj?: string
+    usdz?: string
+    mtl?: string
+    blend?: string
+    stl?: string
   }
-  progress?: number
-  progressText?: string
-  modelUrl?: string
+  texture_urls?: Array<{
+    base_color?: string
+    metallic?: string
+    normal?: string
+    roughness?: string
+  }>
+  thumbnail_url?: string
+  prompt?: string
+  art_style?: string
+  created_at: number
+  started_at?: number
+  finished_at?: number
+  task_error?: {
+    message: string
+  }
+  type?: 'text-to-3d' | 'image-to-3d'
 }
 
 // Props
 interface Props {
-  history: HistoryItem[]
-  activeFilter: string
+  activeCategory: string
+  textTo3dTasks?: HistoryItem[]
+  imageTo3dTasks?: HistoryItem[]
 }
 
 const props = defineProps<Props>()
 
 // Emits
 const emit = defineEmits([
-  'filter-change',
+  'category-change',
   'load-history-item',
-  'download-model',
-  'load-in-viewer',
-  'delete-history-item',
   'clear-history'
 ])
 
-// 筛选器配置
-const filters = [
+// 分类配置
+const categories = [
   { id: 'all', name: '全部' },
-  { id: 'completed', name: '已完成' },
-  { id: 'generating', name: '生成中' },
-  { id: 'failed', name: '失败' }
+  { id: 'text-to-3d', name: '白模' },
+  { id: 'image-to-3d', name: '纹理' }
 ]
 
-// 计算属性
-const filteredHistory = computed(() => {
-  if (props.activeFilter === 'all') {
-    return props.history
+// 计算属性 - 简化版，直接显示所有数据
+const displayHistory = computed(() => {
+  switch (props.activeCategory) {
+    case 'text-to-3d':
+      return props.textTo3dTasks || []
+    case 'image-to-3d':
+      return props.imageTo3dTasks || []
+    case 'all':
+    default:
+      return [...(props.textTo3dTasks || []), ...(props.imageTo3dTasks || [])]
   }
-  return props.history.filter(item => item.status === props.activeFilter)
-})
-
-const completedCount = computed(() => {
-  return props.history.filter(item => item.status === 'completed').length
-})
-
-const generatingCount = computed(() => {
-  return props.history.filter(item => item.status === 'generating').length
 })
 
 // 方法
-const formatDate = (date: Date | undefined) => {
-  if (!date) return '未知时间'
+const formatDate = (timestamp: number | undefined) => {
+  if (!timestamp) return '未知时间'
   
+  const date = new Date(timestamp)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / 60000)
@@ -248,69 +200,49 @@ const formatDate = (date: Date | undefined) => {
   })
 }
 
-const formatFileSize = (bytes?: number) => {
-  if (!bytes) return 'N/A'
-  
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
+const getTaskName = (item: HistoryItem) => {
+  if (item.prompt) {
+    return item.prompt.length > 20 ? item.prompt.slice(0, 20) + '...' : item.prompt
+  }
+  return item.type === 'text-to-3d' ? '文生3D任务' : '图生3D任务'
 }
 
-const getStatusClass = (status: string) => {
+// 网格布局专用方法
+const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'completed':
-      return 'bg-green-500/20 text-green-400'
-    case 'generating':
-      return 'bg-blue-500/20 text-blue-400'
-    case 'failed':
-      return 'bg-red-500/20 text-red-400'
+    case 'SUCCEEDED':
+      return '✓'
+    case 'PENDING':
+      return '⏳'
+    case 'IN_PROGRESS':
+      return '⚡'
+    case 'FAILED':
+    case 'EXPIRED':
+    case 'CANCELED':
+      return '✗'
     default:
-      return 'bg-gray-500/20 text-gray-400'
+      return '?'
   }
 }
 
-const getStatusText = (status: string) => {
+const getStatusBadgeClass = (status: string) => {
   switch (status) {
-    case 'completed':
-      return '已完成'
-    case 'generating':
-      return '生成中'
-    case 'failed':
-      return '失败'
+    case 'SUCCEEDED':
+      return 'bg-green-600'
+    case 'PENDING':
+      return 'bg-yellow-600'
+    case 'IN_PROGRESS':
+      return 'bg-blue-600'
+    case 'FAILED':
+    case 'EXPIRED':
+    case 'CANCELED':
+      return 'bg-red-600'
     default:
-      return '未知'
+      return 'bg-gray-600'
   }
 }
 
-const getTypeClass = (type: string) => {
-  switch (type) {
-    case 'text-to-3d':
-      return 'bg-purple-500/20 text-purple-400'
-    case 'image-to-3d':
-      return 'bg-orange-500/20 text-orange-400'
-    case 'retopology':
-      return 'bg-cyan-500/20 text-cyan-400'
-    case 'texture':
-      return 'bg-pink-500/20 text-pink-400'
-    default:
-      return 'bg-gray-500/20 text-gray-400'
-  }
-}
 
-const getTypeText = (type: string) => {
-  switch (type) {
-    case 'text-to-3d':
-      return '文生3D'
-    case 'image-to-3d':
-      return '图生3D'
-    case 'retopology':
-      return '重拓扑'
-    case 'texture':
-      return '贴图'
-    default:
-      return '未知'
-  }
-}
 </script>
 
 <style scoped>
