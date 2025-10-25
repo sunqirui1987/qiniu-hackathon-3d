@@ -1,189 +1,222 @@
 <template>
-  <div class="property-panel">
-    <h3 class="panel-title">
-      Model Properties
+  <div class="bg-white rounded-lg shadow-md p-4 space-y-4">
+    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+      模型属性
     </h3>
-    
+
     <div
-      v-if="modelInfo"
-      class="properties"
+      v-if="!modelInfo"
+      class="text-center py-8 text-gray-400"
     >
-      <div class="property-item">
-        <span class="property-label">Name</span>
-        <span class="property-value">{{ modelInfo.name || 'Unnamed' }}</span>
-      </div>
-      
-      <div class="property-item">
-        <span class="property-label">Vertices</span>
-        <span class="property-value">{{ formatNumber(modelInfo.vertices) }}</span>
-      </div>
-      
-      <div class="property-item">
-        <span class="property-label">Faces</span>
-        <span class="property-value">{{ formatNumber(modelInfo.faces) }}</span>
-      </div>
-      
-      <div
-        v-if="modelInfo.dimensions"
-        class="property-section"
+      <svg
+        class="w-12 h-12 mx-auto mb-3"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
       >
-        <h4 class="section-title">
-          Dimensions
-        </h4>
-        <div class="property-item">
-          <span class="property-label">Width (X)</span>
-          <span class="property-value">{{ formatDimension(modelInfo.dimensions.x) }}</span>
-        </div>
-        <div class="property-item">
-          <span class="property-label">Height (Y)</span>
-          <span class="property-value">{{ formatDimension(modelInfo.dimensions.y) }}</span>
-        </div>
-        <div class="property-item">
-          <span class="property-label">Depth (Z)</span>
-          <span class="property-value">{{ formatDimension(modelInfo.dimensions.z) }}</span>
-        </div>
-      </div>
-      
-      <div class="property-section">
-        <h4 class="section-title">
-          Print Recommendations
-        </h4>
-        <div class="recommendation">
-          <p class="recommendation-text">
-            <strong>Layer Height:</strong> {{ modelInfo.printRecommendations?.layerHeight || '0.2mm' }}
-          </p>
-          <p class="recommendation-text">
-            <strong>Supports:</strong> {{ modelInfo.printRecommendations?.needsSupports ? 'Required' : 'Not needed' }}
-          </p>
-          <p class="recommendation-text">
-            <strong>Infill:</strong> {{ modelInfo.printRecommendations?.infill || '20%' }}
-          </p>
-        </div>
-      </div>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      <p class="text-sm">
+        暂无模型信息
+      </p>
     </div>
-    
+
     <div
       v-else
-      class="no-model"
+      class="space-y-4"
     >
-      <p class="no-model-text">
-        No model loaded
-      </p>
+      <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-gray-700 border-b pb-2">
+          基本信息
+        </h4>
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-xs text-gray-500 mb-1">
+              顶点数
+            </p>
+            <p class="text-lg font-semibold text-gray-800">
+              {{ formatNumber(modelInfo.vertices) }}
+            </p>
+          </div>
+          
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-xs text-gray-500 mb-1">
+              三角面数
+            </p>
+            <p class="text-lg font-semibold text-gray-800">
+              {{ formatNumber(modelInfo.faces) }}
+            </p>
+          </div>
+          
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-xs text-gray-500 mb-1">
+              材质数
+            </p>
+            <p class="text-lg font-semibold text-gray-800">
+              {{ modelInfo.materials }}
+            </p>
+          </div>
+          
+          <div class="bg-gray-50 rounded-lg p-3">
+            <p class="text-xs text-gray-500 mb-1">
+              复杂度
+            </p>
+            <p
+              class="text-lg font-semibold"
+              :class="complexityColor"
+            >
+              {{ complexity }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-gray-700 border-b pb-2">
+          尺寸信息
+        </h4>
+        
+        <div class="space-y-2">
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm text-gray-600">宽度 (X)</span>
+            <span class="text-sm font-medium text-gray-800">{{ formatDimension(modelInfo.boundingBox.size.x) }}</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm text-gray-600">高度 (Y)</span>
+            <span class="text-sm font-medium text-gray-800">{{ formatDimension(modelInfo.boundingBox.size.y) }}</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-sm text-gray-600">深度 (Z)</span>
+            <span class="text-sm font-medium text-gray-800">{{ formatDimension(modelInfo.boundingBox.size.z) }}</span>
+          </div>
+          
+          <div class="flex justify-between items-center py-2 bg-blue-50 rounded-lg px-3 mt-2">
+            <span class="text-sm font-medium text-blue-700">体积</span>
+            <span class="text-sm font-semibold text-blue-800">{{ volume }} 单位³</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-gray-700 border-b pb-2">
+          中心点坐标
+        </h4>
+        
+        <div class="grid grid-cols-3 gap-2">
+          <div class="bg-red-50 rounded-lg p-2 text-center">
+            <p class="text-xs text-red-600 mb-1">
+              X
+            </p>
+            <p class="text-sm font-semibold text-red-700">
+              {{ formatCoord(modelInfo.boundingBox.center.x) }}
+            </p>
+          </div>
+          
+          <div class="bg-green-50 rounded-lg p-2 text-center">
+            <p class="text-xs text-green-600 mb-1">
+              Y
+            </p>
+            <p class="text-sm font-semibold text-green-700">
+              {{ formatCoord(modelInfo.boundingBox.center.y) }}
+            </p>
+          </div>
+          
+          <div class="bg-blue-50 rounded-lg p-2 text-center">
+            <p class="text-xs text-blue-600 mb-1">
+              Z
+            </p>
+            <p class="text-sm font-semibold text-blue-700">
+              {{ formatCoord(modelInfo.boundingBox.center.z) }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-gray-200">
+        <div class="flex items-center justify-between text-xs text-gray-500">
+          <span>打印建议</span>
+          <span
+            class="px-2 py-1 rounded-full"
+            :class="printabilityBadge"
+          >
+            {{ printability }}
+          </span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-interface ModelInfo {
-  name?: string
-  vertices: number
-  faces: number
-  dimensions?: {
-    x: number
-    y: number
-    z: number
-  }
-  printRecommendations?: {
-    layerHeight?: string
-    needsSupports?: boolean
-    infill?: string
-  }
-}
+import { computed } from 'vue'
+import type { ModelInfo } from '@/composables/use3DViewer'
 
 interface Props {
-  modelInfo?: ModelInfo | null
+  modelInfo: ModelInfo | null
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-function formatNumber(num: number | undefined): string {
-  if (num === undefined) return '0'
-  return num.toLocaleString()
+const formatNumber = (num: number): string => {
+  return num.toLocaleString('zh-CN')
 }
 
-function formatDimension(dim: number | undefined): string {
-  if (dim === undefined) return '0.00'
-  return `${dim.toFixed(2)} units`
+const formatDimension = (value: number): string => {
+  return value.toFixed(2) + ' 单位'
 }
+
+const formatCoord = (value: number): string => {
+  return value.toFixed(2)
+}
+
+const complexity = computed(() => {
+  if (!props.modelInfo) return '-'
+  const faces = props.modelInfo.faces
+  if (faces < 10000) return '低'
+  if (faces < 100000) return '中'
+  if (faces < 500000) return '高'
+  return '极高'
+})
+
+const complexityColor = computed(() => {
+  const comp = complexity.value
+  if (comp === '低') return 'text-green-600'
+  if (comp === '中') return 'text-blue-600'
+  if (comp === '高') return 'text-orange-600'
+  return 'text-red-600'
+})
+
+const volume = computed(() => {
+  if (!props.modelInfo) return '0'
+  const size = props.modelInfo.boundingBox.size
+  const vol = size.x * size.y * size.z
+  return vol.toFixed(2)
+})
+
+const printability = computed(() => {
+  if (!props.modelInfo) return '未知'
+  const size = props.modelInfo.boundingBox.size
+  const maxDim = Math.max(size.x, size.y, size.z)
+  
+  if (maxDim < 100) return '适合小型打印机'
+  if (maxDim < 200) return '适合中型打印机'
+  if (maxDim < 300) return '需要大型打印机'
+  return '可能需要分块打印'
+})
+
+const printabilityBadge = computed(() => {
+  const p = printability.value
+  if (p.includes('小型')) return 'bg-green-100 text-green-700'
+  if (p.includes('中型')) return 'bg-blue-100 text-blue-700'
+  if (p.includes('大型')) return 'bg-orange-100 text-orange-700'
+  return 'bg-red-100 text-red-700'
+})
 </script>
-
-<style scoped>
-.property-panel {
-  background-color: white;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.panel-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 16px;
-  color: #1f2937;
-}
-
-.properties {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.property-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.property-item:last-child {
-  border-bottom: none;
-}
-
-.property-label {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.property-value {
-  font-size: 14px;
-  color: #1f2937;
-  font-weight: 600;
-}
-
-.property-section {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 2px solid #e5e7eb;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 12px;
-}
-
-.recommendation {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.recommendation-text {
-  font-size: 13px;
-  color: #374151;
-  margin: 0;
-}
-
-.no-model {
-  padding: 32px 0;
-  text-align: center;
-}
-
-.no-model-text {
-  color: #9ca3af;
-  font-size: 14px;
-}
-</style>
