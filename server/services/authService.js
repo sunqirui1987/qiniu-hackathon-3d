@@ -9,6 +9,7 @@ import { hashPassword, comparePassword, validatePasswordStrength } from '../util
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js'
 import { validateEmail, validatePassword, validateName, sanitizeInput } from '../utils/validation.js'
 import { AppError } from '../middleware/errorHandler.js'
+import { oauthService } from './oauthService.js'
 
 export class AuthService {
   // 用户注册
@@ -235,6 +236,52 @@ export class AuthService {
     console.log(`[Auth] Password changed for user: ${userId}`)
     
     return { success: true }
+  }
+  
+  async loginWithOAuth(provider, code, state) {
+    const stateVerification = oauthService.verifyState(state, provider)
+    if (!stateVerification.valid) {
+      throw new AppError(stateVerification.error, 400)
+    }
+    
+    const accessToken = await oauthService.exchangeCodeForToken(provider, code)
+    
+    const oauthUser = await oauthService.getUserInfo(provider, accessToken)
+    
+    let user = await db.findUserByProvider(oauthUser.provider, oauthUser.providerId)
+    
+    if (!user) {
+      user = await db.createUser({
+        email: oauthUser.email,
+        name: oauthUser.name,
+        avatar: oauthUser.avatar,
+        provider: oauthUser.provider,
+        providerId: oauthUser.providerId,
+        oauthData: oauthUser.rawData
+      })
+      
+      console.log(`[Auth] New OAuth user created: ${user.email} (${provider})`)
+    } else {
+      await db.updateUser(user.id, {
+        name: oauthUser.name,
+        avatar: oauthUser.avatar,
+        lastLoginAt: new Date().toISOString()
+      })
+      
+      console.log(`[Auth] OAuth user logged in: ${user.email} (${provider})`)
+    }
+    
+    const jwtAccessToken = generateAccessToken(user.id, user.email)
+    const refreshToken = generateRefreshToken(user.id, user.email)
+    
+    const refreshExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+    await db.saveRefreshToken(user.id, refreshToken, refreshExpiry)
+    
+    return {
+      user: user.toPublic(),
+      accessToken: jwtAccessToken,
+      refreshToken
+    }
   }
 }
 

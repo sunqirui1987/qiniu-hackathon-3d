@@ -8,6 +8,7 @@ import express from 'express'
 import { authService } from '../services/authService.js'
 import { verifyAccessToken } from '../utils/jwt.js'
 import { requireAuth } from '../middleware/security.js'
+import { oauthService } from '../services/oauthService.js'
 
 const router = express.Router()
 
@@ -194,6 +195,50 @@ router.post('/change-password', requireAuth, async (req, res, next) => {
     })
   } catch (error) {
     next(error)
+  }
+})
+
+router.get('/:provider', async (req, res, next) => {
+  try {
+    const { provider } = req.params
+    
+    if (!['github', 'google'].includes(provider)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Unsupported OAuth provider'
+      })
+    }
+    
+    const { url } = oauthService.generateAuthorizationUrl(provider)
+    
+    res.redirect(url)
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/:provider/callback', async (req, res, next) => {
+  try {
+    const { provider } = req.params
+    const { code, state, error } = req.query
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    
+    if (error) {
+      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error)}`)
+    }
+    
+    if (!code || !state) {
+      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent('Missing code or state parameter')}`)
+    }
+    
+    const result = await authService.loginWithOAuth(provider, code, state)
+    
+    res.redirect(`${frontendUrl}/auth/callback?token=${result.accessToken}&refresh_token=${result.refreshToken}`)
+  } catch (error) {
+    console.error('[OAuth Callback Error]:', error)
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error.message || 'OAuth authentication failed')}`)
   }
 })
 

@@ -48,10 +48,12 @@ class DatabaseService {
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
+        password_hash TEXT,
         name TEXT NOT NULL,
         avatar TEXT,
         provider TEXT NOT NULL DEFAULT 'local',
+        provider_id TEXT,
+        oauth_data TEXT,
         role TEXT NOT NULL DEFAULT 'user',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -83,6 +85,7 @@ class DatabaseService {
     // 创建索引以提高查询性能
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id);
       CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
       CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
       CREATE INDEX IF NOT EXISTS idx_revoked_tokens_token ON revoked_tokens(token);
@@ -95,17 +98,19 @@ class DatabaseService {
     const now = new Date().toISOString()
     
     const stmt = this.db.prepare(`
-      INSERT INTO users (id, email, password_hash, name, avatar, provider, role, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, password_hash, name, avatar, provider, provider_id, oauth_data, role, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     
     stmt.run(
       id,
       userData.email,
-      userData.passwordHash,
+      userData.passwordHash || null,
       userData.name,
       userData.avatar || null,
       userData.provider || 'local',
+      userData.providerId || null,
+      userData.oauthData ? JSON.stringify(userData.oauthData) : null,
       userData.role || 'user',
       now,
       now
@@ -118,6 +123,7 @@ class DatabaseService {
       name: userData.name,
       avatar: userData.avatar,
       provider: userData.provider || 'local',
+      providerId: userData.providerId,
       role: userData.role || 'user',
       createdAt: now,
       updatedAt: now
@@ -159,6 +165,28 @@ class DatabaseService {
       name: row.name,
       avatar: row.avatar,
       provider: row.provider,
+      providerId: row.provider_id,
+      role: row.role,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      lastLoginAt: row.last_login_at
+    })
+  }
+  
+  async findUserByProvider(provider, providerId) {
+    const stmt = this.db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?')
+    const row = stmt.get(provider, providerId)
+    
+    if (!row) return null
+    
+    return new User({
+      id: row.id,
+      email: row.email,
+      passwordHash: row.password_hash,
+      name: row.name,
+      avatar: row.avatar,
+      provider: row.provider,
+      providerId: row.provider_id,
       role: row.role,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
