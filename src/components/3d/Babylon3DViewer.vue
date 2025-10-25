@@ -1,228 +1,169 @@
 <template>
-  <div class="babylon-3d-viewer" :class="{ 'is-loading': isLoading }">
-    <canvas ref="canvasRef" class="viewer-canvas"></canvas>
+  <div class="relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+    <canvas
+      ref="canvasRef"
+      class="w-full h-full"
+    />
     
-    <div v-if="isLoading" class="loading-overlay">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">{{ loadingMessage }}</p>
+    <div
+      v-if="isLoading"
+      class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50"
+    >
+      <div class="text-center text-white">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4" />
+        <p class="text-lg">
+          加载模型中...
+        </p>
+      </div>
     </div>
-    
-    <div v-if="error" class="error-overlay">
-      <div class="error-icon">⚠️</div>
-      <p class="error-message">{{ error }}</p>
-      <button @click="clearError" class="error-button">Close</button>
+
+    <div
+      v-if="loadError"
+      class="absolute inset-0 flex items-center justify-center bg-red-50"
+    >
+      <div class="text-center text-red-600 p-6">
+        <svg
+          class="w-16 h-16 mx-auto mb-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <p class="text-lg font-semibold mb-2">
+          加载失败
+        </p>
+        <p class="text-sm">
+          {{ loadError }}
+        </p>
+      </div>
+    </div>
+
+    <div
+      v-if="!currentModel && !isLoading && !loadError"
+      class="absolute inset-0 flex items-center justify-center text-gray-400"
+    >
+      <div class="text-center">
+        <svg
+          class="w-16 h-16 mx-auto mb-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+          />
+        </svg>
+        <p class="text-lg">
+          暂无模型
+        </p>
+        <p class="text-sm mt-2">
+          请加载3D模型以开始查看
+        </p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { use3DViewer } from '../../composables/use3DViewer'
+import { use3DViewer, type ModelInfo } from '@/composables/use3DViewer'
 
-export interface Babylon3DViewerProps {
+interface Props {
   modelUrl?: string
   autoLoad?: boolean
+  clearColor?: string
 }
 
-const props = withDefaults(defineProps<Babylon3DViewerProps>(), {
+const props = withDefaults(defineProps<Props>(), {
   modelUrl: '',
-  autoLoad: false,
+  autoLoad: true,
+  clearColor: '#f3f4f6'
 })
 
-const emit = defineEmits<{
-  modelLoaded: []
-  modelError: [error: string]
-  viewerReady: []
-}>()
+interface Emits {
+  (e: 'loaded', info: ModelInfo): void
+  (e: 'error', error: string): void
+  (e: 'viewerReady'): void
+  (e: 'modelLoaded'): void
+  (e: 'modelError', error: string): void
+}
+
+const emit = defineEmits<Emits>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-const isLoading = ref(false)
-const loadingMessage = ref('Initializing 3D viewer...')
-const error = ref<string | null>(null)
 
 const {
-  scene,
-  camera,
-  engine,
-  isInitialized,
   currentModel,
+  isLoading,
+  loadError,
+  modelInfo,
   initViewer,
   loadModel,
   exportSTL,
   exportGLB,
-  dispose,
-} = use3DViewer({ canvasRef })
-
-const initialize = () => {
-  try {
-    initViewer()
-    emit('viewerReady')
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to initialize viewer'
-    error.value = errorMessage
-    emit('modelError', errorMessage)
-  }
-}
-
-const load = async (url: string) => {
-  if (!url) return
-  
-  isLoading.value = true
-  loadingMessage.value = 'Loading 3D model...'
-  error.value = null
-
-  try {
-    await loadModel(url)
-    emit('modelLoaded')
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to load model'
-    error.value = errorMessage
-    emit('modelError', errorMessage)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const clearError = () => {
-  error.value = null
-}
-
-const exportAsSTL = async (): Promise<Blob | null> => {
-  try {
-    return await exportSTL()
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to export STL'
-    error.value = errorMessage
-    emit('modelError', errorMessage)
-    return null
-  }
-}
-
-const exportAsGLB = async (): Promise<Blob | null> => {
-  try {
-    return await exportGLB()
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to export GLB'
-    error.value = errorMessage
-    emit('modelError', errorMessage)
-    return null
-  }
-}
+  resetCamera,
+  setZoom,
+  rotateModel,
+  disposeViewer,
+} = use3DViewer(canvasRef)
 
 onMounted(() => {
-  initialize()
-  
-  if (props.autoLoad && props.modelUrl) {
-    load(props.modelUrl)
+  initViewer()
+  emit('viewerReady')
+
+  if (props.modelUrl && props.autoLoad) {
+    handleLoadModel(props.modelUrl)
   }
 })
 
 watch(() => props.modelUrl, (newUrl) => {
-  if (newUrl && isInitialized.value) {
-    load(newUrl)
+  if (newUrl && props.autoLoad) {
+    handleLoadModel(newUrl)
   }
 })
+
+watch(modelInfo, (info) => {
+  if (info) {
+    emit('loaded', info)
+    emit('modelLoaded')
+  }
+})
+
+watch(loadError, (error) => {
+  if (error) {
+    emit('error', error)
+    emit('modelError', error)
+  }
+})
+
+const handleLoadModel = async (url: string) => {
+  try {
+    await loadModel(url)
+  } catch (error) {
+    console.error('Failed to load model:', error)
+  }
+}
 
 defineExpose({
-  scene,
-  camera,
-  engine,
-  isInitialized,
+  loadModel: handleLoadModel,
+  exportSTL,
+  exportGLB,
+  resetCamera,
+  setZoom,
+  rotateModel,
+  modelInfo,
   currentModel,
-  loadModel: load,
-  exportSTL: exportAsSTL,
-  exportGLB: exportAsGLB,
-  dispose,
+  isLoading,
+  loadError,
+  dispose: disposeViewer,
 })
 </script>
-
-<style scoped>
-.babylon-3d-viewer {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 400px;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.viewer-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  outline: none;
-}
-
-.loading-overlay,
-.error-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
-  z-index: 10;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-text {
-  margin-top: 16px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.error-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
-.error-message {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  text-align: center;
-  max-width: 80%;
-  margin-bottom: 16px;
-}
-
-.error-button {
-  padding: 8px 24px;
-  background-color: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.error-button:hover {
-  background-color: #2563eb;
-}
-
-.error-button:active {
-  background-color: #1d4ed8;
-}
-</style>

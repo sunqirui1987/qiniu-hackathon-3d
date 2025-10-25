@@ -6,153 +6,240 @@ import {
   HemisphericLight,
   Vector3,
   SceneLoader,
-  STLExport,
-  type AbstractMesh,
-  type Camera,
+  AbstractMesh,
   Color4,
-  GLTFExportOptions,
+  type Mesh,
+  type ISceneLoaderAsyncResult
 } from '@babylonjs/core'
+import { STLExport } from '@babylonjs/serializers'
 import '@babylonjs/loaders/glTF'
 import '@babylonjs/loaders/STL'
 import '@babylonjs/loaders/OBJ'
-import { GLTF2Export } from '@babylonjs/serializers'
 
-export interface Use3DViewerOptions {
-  canvasRef: Ref<HTMLCanvasElement | null>
+export interface ViewerOptions {
+  clearColor?: Color4
+  enablePhysics?: boolean
 }
 
-export interface Use3DViewerReturn {
-  scene: Ref<Scene | null>
-  camera: Ref<Camera | null>
-  engine: Ref<Engine | null>
-  isInitialized: Ref<boolean>
-  currentModel: Ref<AbstractMesh | null>
-  initViewer: () => void
-  loadModel: (url: string) => Promise<void>
-  exportSTL: () => Promise<Blob | null>
-  exportGLB: () => Promise<Blob | null>
-  dispose: () => void
+export interface ModelInfo {
+  vertices: number
+  faces: number
+  materials: number
+  boundingBox: {
+    min: Vector3
+    max: Vector3
+    size: Vector3
+    center: Vector3
+  }
 }
 
-export function use3DViewer({ canvasRef }: Use3DViewerOptions): Use3DViewerReturn {
-  const scene = ref<Scene | null>(null)
-  const camera = ref<Camera | null>(null)
+export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
   const engine = ref<Engine | null>(null)
-  const isInitialized = ref(false)
+  const scene = ref<Scene | null>(null)
+  const camera = ref<ArcRotateCamera | null>(null)
+  const light = ref<HemisphericLight | null>(null)
   const currentModel = ref<AbstractMesh | null>(null)
+  const isLoading = ref(false)
+  const loadError = ref<string | null>(null)
+  const modelInfo = ref<ModelInfo | null>(null)
 
-  const initViewer = () => {
+  const initViewer = (options: ViewerOptions = {}) => {
     if (!canvasRef.value) {
-      throw new Error('Canvas element is required')
-    }
-
-    if (isInitialized.value) {
+      console.error('Canvas element not found')
       return
     }
 
-    const babylonEngine = new Engine(canvasRef.value, true, {
+    engine.value = new Engine(canvasRef.value, true, {
       preserveDrawingBuffer: true,
       stencil: true,
     })
 
-    const babylonScene = new Scene(babylonEngine)
-    babylonScene.clearColor = new Color4(0.2, 0.2, 0.2, 1)
+    scene.value = new Scene(engine.value)
+    scene.value.clearColor = options.clearColor || new Color4(0.95, 0.95, 0.95, 1)
 
-    const babylonCamera = new ArcRotateCamera(
+    camera.value = new ArcRotateCamera(
       'camera',
       -Math.PI / 2,
       Math.PI / 2.5,
-      3,
+      10,
       Vector3.Zero(),
-      babylonScene
+      scene.value
     )
-    babylonCamera.attachControl(canvasRef.value, true)
-    babylonCamera.wheelPrecision = 50
-    babylonCamera.minZ = 0.1
+    camera.value.attachControl(canvasRef.value, true)
+    camera.value.wheelPrecision = 50
+    camera.value.minZ = 0.1
+    camera.value.lowerRadiusLimit = 1
+    camera.value.upperRadiusLimit = 100
 
-    const light = new HemisphericLight('light', new Vector3(0, 1, 0), babylonScene)
-    light.intensity = 0.7
+    light.value = new HemisphericLight('light', new Vector3(0, 1, 0), scene.value)
+    light.value.intensity = 1.0
 
-    babylonEngine.runRenderLoop(() => {
-      babylonScene.render()
+    engine.value.runRenderLoop(() => {
+      if (scene.value) {
+        scene.value.render()
+      }
     })
 
-    window.addEventListener('resize', () => {
-      babylonEngine.resize()
-    })
-
-    engine.value = babylonEngine
-    scene.value = babylonScene
-    camera.value = babylonCamera
-    isInitialized.value = true
+    window.addEventListener('resize', handleResize)
   }
 
-  const loadModel = async (url: string): Promise<void> => {
+  const handleResize = () => {
+    if (engine.value) {
+      engine.value.resize()
+    }
+  }
+
+  const loadModel = async (url: string, _fileName?: string): Promise<void> => {
     if (!scene.value) {
-      throw new Error('Scene not initialized. Call initViewer() first.')
+      throw new Error('Scene not initialized')
     }
 
-    if (currentModel.value) {
-      currentModel.value.dispose()
-      currentModel.value = null
-    }
+    isLoading.value = true
+    loadError.value = null
 
     try {
-      const result = await SceneLoader.ImportMeshAsync('', '', url, scene.value)
+      if (currentModel.value) {
+        currentModel.value.dispose()
+        currentModel.value = null
+      }
+
+      const result: ISceneLoaderAsyncResult = await SceneLoader.ImportMeshAsync(
+        '',
+        '',
+        url,
+        scene.value
+      )
 
       if (result.meshes.length > 0) {
         const rootMesh = result.meshes[0]
-        currentModel.value = rootMesh as AbstractMesh
+        currentModel.value = rootMesh
 
-        if (camera.value && camera.value instanceof ArcRotateCamera) {
-          const boundingInfo = rootMesh.getHierarchyBoundingVectors(true)
-          const center = boundingInfo.min.add(boundingInfo.max).scale(0.5)
-          const size = boundingInfo.max.subtract(boundingInfo.min)
-          const maxDimension = Math.max(size.x, size.y, size.z)
-
-          camera.value.target = center
-          camera.value.radius = maxDimension * 2
-          camera.value.alpha = -Math.PI / 2
-          camera.value.beta = Math.PI / 2.5
-        }
+        frameModel(rootMesh)
+        
+        updateModelInfo(result.meshes)
       }
+
+      isLoading.value = false
     } catch (error) {
-      throw new Error(`Failed to load model: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      isLoading.value = false
+      loadError.value = error instanceof Error ? error.message : 'Failed to load model'
+      throw error
     }
   }
 
-  const exportSTL = async (): Promise<Blob | null> => {
+  const frameModel = (mesh: AbstractMesh) => {
+    if (!camera.value) return
+
+    const boundingInfo = mesh.getHierarchyBoundingVectors()
+    const center = boundingInfo.min.add(boundingInfo.max).scale(0.5)
+    const size = boundingInfo.max.subtract(boundingInfo.min)
+    const maxDim = Math.max(size.x, size.y, size.z)
+
+    camera.value.target = center
+    camera.value.radius = maxDim * 2
+    camera.value.alpha = -Math.PI / 2
+    camera.value.beta = Math.PI / 2.5
+  }
+
+  const updateModelInfo = (meshes: AbstractMesh[]) => {
+    let totalVertices = 0
+    let totalFaces = 0
+    let materialCount = 0
+
+    const materials = new Set()
+
+    meshes.forEach(mesh => {
+      if ('getTotalVertices' in mesh) {
+        totalVertices += (mesh as Mesh).getTotalVertices()
+      }
+      if ('getTotalIndices' in mesh) {
+        totalFaces += (mesh as Mesh).getTotalIndices() / 3
+      }
+      if (mesh.material) {
+        materials.add(mesh.material.uniqueId)
+      }
+    })
+
+    materialCount = materials.size
+
+    if (currentModel.value) {
+      const boundingInfo = currentModel.value.getHierarchyBoundingVectors()
+      const min = boundingInfo.min
+      const max = boundingInfo.max
+      const size = max.subtract(min)
+      const center = min.add(max).scale(0.5)
+
+      modelInfo.value = {
+        vertices: totalVertices,
+        faces: Math.floor(totalFaces),
+        materials: materialCount,
+        boundingBox: {
+          min,
+          max,
+          size,
+          center,
+        },
+      }
+    }
+  }
+
+  const exportSTL = (): Blob | null => {
     if (!currentModel.value || !scene.value) {
-      throw new Error('No model loaded')
+      console.error('No model to export')
+      return null
     }
 
     try {
-      const stlString = STLExport.CreateSTL([currentModel.value], true, currentModel.value.name || 'model')
-      return new Blob([stlString], { type: 'application/octet-stream' })
+      const stlString = STLExport.CreateSTL([currentModel.value], false, currentModel.value.name || 'model')
+      const blob = new Blob([stlString], { type: 'model/stl' })
+      return blob
     } catch (error) {
-      throw new Error(`Failed to export STL: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('Failed to export STL:', error)
+      return null
     }
   }
 
   const exportGLB = async (): Promise<Blob | null> => {
-    if (!currentModel.value || !scene.value) {
-      throw new Error('No model loaded')
+    if (!scene.value) {
+      console.error('Scene not initialized')
+      return null
     }
 
     try {
-      const options: GLTFExportOptions = {
-        shouldExportNode: (node) => node === currentModel.value || node.parent === currentModel.value,
-      }
-
-      const glb = await GLTF2Export.GLBAsync(scene.value, currentModel.value.name || 'model', options)
-      const fileName = `${currentModel.value.name || 'model'}.glb`
-      return glb.glTFFiles[fileName] as Blob
+      const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
+      const glb = await GLTF2Export.GLBAsync(scene.value, 'model')
+      return glb.glTFFiles['model.glb'] as Blob
     } catch (error) {
-      throw new Error(`Failed to export GLB: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('Failed to export GLB:', error)
+      return null
     }
   }
 
-  const dispose = () => {
+  const resetCamera = () => {
+    if (camera.value) {
+      camera.value.alpha = -Math.PI / 2
+      camera.value.beta = Math.PI / 2.5
+      camera.value.radius = 10
+      camera.value.target = Vector3.Zero()
+    }
+  }
+
+  const setZoom = (delta: number) => {
+    if (camera.value) {
+      camera.value.radius *= (1 + delta)
+    }
+  }
+
+  const rotateModel = (x: number, y: number) => {
+    if (camera.value) {
+      camera.value.alpha += x
+      camera.value.beta += y
+    }
+  }
+
+  const disposeViewer = () => {
+    window.removeEventListener('resize', handleResize)
+    
     if (currentModel.value) {
       currentModel.value.dispose()
       currentModel.value = null
@@ -167,24 +254,28 @@ export function use3DViewer({ canvasRef }: Use3DViewerOptions): Use3DViewerRetur
       engine.value.dispose()
       engine.value = null
     }
-
-    isInitialized.value = false
   }
 
   onUnmounted(() => {
-    dispose()
+    disposeViewer()
   })
 
   return {
+    engine,
     scene,
     camera,
-    engine,
-    isInitialized,
+    light,
     currentModel,
+    isLoading,
+    loadError,
+    modelInfo,
     initViewer,
     loadModel,
     exportSTL,
     exportGLB,
-    dispose,
+    resetCamera,
+    setZoom,
+    rotateModel,
+    disposeViewer,
   }
 }
