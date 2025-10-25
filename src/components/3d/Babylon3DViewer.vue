@@ -92,6 +92,9 @@ const props = withDefaults(defineProps<Props>(), {
 interface Emits {
   (e: 'loaded', info: ModelInfo): void
   (e: 'error', error: string): void
+  (e: 'viewerReady'): void
+  (e: 'modelLoaded'): void
+  (e: 'modelError', error: string): void
 }
 
 const emit = defineEmits<Emits>()
@@ -110,10 +113,12 @@ const {
   resetCamera,
   setZoom,
   rotateModel,
+  disposeViewer,
 } = use3DViewer(canvasRef)
 
 onMounted(() => {
   initViewer()
+  emit('viewerReady')
 
   if (props.modelUrl && props.autoLoad) {
     handleLoadModel(props.modelUrl)
@@ -129,12 +134,14 @@ watch(() => props.modelUrl, (newUrl) => {
 watch(modelInfo, (info) => {
   if (info) {
     emit('loaded', info)
+    emit('modelLoaded')
   }
 })
 
 watch(loadError, (error) => {
   if (error) {
     emit('error', error)
+    emit('modelError', error)
   }
 })
 
@@ -154,5 +161,9 @@ defineExpose({
   setZoom,
   rotateModel,
   modelInfo,
+  currentModel,
+  isLoading,
+  loadError,
+  dispose: disposeViewer,
 })
 </script>
