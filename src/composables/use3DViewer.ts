@@ -9,9 +9,9 @@ import {
   AbstractMesh,
   Color4,
   type Mesh,
-  STLExport,
   type ISceneLoaderAsyncResult
 } from '@babylonjs/core'
+import { STLExport } from '@babylonjs/serializers'
 import '@babylonjs/loaders/glTF'
 import '@babylonjs/loaders/STL'
 import '@babylonjs/loaders/OBJ'
