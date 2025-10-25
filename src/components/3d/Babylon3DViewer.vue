@@ -1,8 +1,8 @@
 <template>
-  <div class="relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+  <div class="babylon-3d-viewer relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
     <canvas
       ref="canvasRef"
-      class="w-full h-full"
+      class="viewer-canvas w-full h-full"
     />
     
     <div
@@ -102,7 +102,11 @@ const emit = defineEmits<Emits>()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 const {
+  scene,
+  camera,
+  engine,
   currentModel,
+  isInitialized,
   isLoading,
   loadError,
   modelInfo,
@@ -115,8 +119,8 @@ const {
   resetCamera,
   setZoom,
   rotateModel,
-  disposeViewer,
-} = use3DViewer(canvasRef)
+  dispose,
+} = use3DViewer({ canvasRef })
 
 onMounted(() => {
   initViewer()
@@ -156,6 +160,11 @@ const handleLoadModel = async (url: string) => {
 }
 
 defineExpose({
+  scene,
+  camera,
+  engine,
+  isInitialized,
+  currentModel,
   loadModel: handleLoadModel,
   exportSTL,
   exportGLB,
@@ -164,10 +173,6 @@ defineExpose({
   resetCamera,
   setZoom,
   rotateModel,
-  modelInfo,
-  currentModel,
-  isLoading,
-  loadError,
-  dispose: disposeViewer,
+  dispose,
 })
 </script>

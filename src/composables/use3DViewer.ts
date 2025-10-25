@@ -33,19 +33,23 @@ export interface ModelInfo {
   }
 }
 
-export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
+export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | null> }) {
   const engine = ref<Engine | null>(null)
   const scene = ref<Scene | null>(null)
   const camera = ref<ArcRotateCamera | null>(null)
   const light = ref<HemisphericLight | null>(null)
   const currentModel = ref<AbstractMesh | null>(null)
+  const isInitialized = ref(false)
   const isLoading = ref(false)
   const loadError = ref<string | null>(null)
   const modelInfo = ref<ModelInfo | null>(null)
 
   const initViewer = (options: ViewerOptions = {}) => {
     if (!canvasRef.value) {
-      console.error('Canvas element not found')
+      throw new Error('Canvas element is required')
+    }
+
+    if (isInitialized.value) {
       return
     }
 
@@ -81,6 +85,7 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
     })
 
     window.addEventListener('resize', handleResize)
+    isInitialized.value = true
   }
 
   const handleResize = () => {
@@ -91,7 +96,7 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
 
   const loadModel = async (url: string, _fileName?: string): Promise<void> => {
     if (!scene.value) {
-      throw new Error('Scene not initialized')
+      throw new Error('Scene not initialized. Call initViewer() first.')
     }
 
     isLoading.value = true
@@ -122,8 +127,9 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
       isLoading.value = false
     } catch (error) {
       isLoading.value = false
-      loadError.value = error instanceof Error ? error.message : 'Failed to load model'
-      throw error
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load model'
+      loadError.value = errorMessage
+      throw new Error(`Failed to load model: ${errorMessage}`)
     }
   }
 
@@ -183,35 +189,35 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
     }
   }
 
-  const exportSTL = (): Blob | null => {
+  const exportSTL = async (): Promise<Blob | null> => {
     if (!currentModel.value || !scene.value) {
-      console.error('No model to export')
-      return null
+      throw new Error('No model loaded')
     }
 
     try {
-      const stlString = STLExport.CreateSTL([currentModel.value], false, currentModel.value.name || 'model')
-      const blob = new Blob([stlString], { type: 'model/stl' })
+      const stlString = STLExport.CreateSTL([currentModel.value], true, currentModel.value.name || 'model')
+      const blob = new Blob([stlString], { type: 'application/octet-stream' })
       return blob
     } catch (error) {
-      console.error('Failed to export STL:', error)
-      return null
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to export STL: ${errorMessage}`)
     }
   }
 
   const exportGLB = async (): Promise<Blob | null> => {
-    if (!scene.value) {
-      console.error('Scene not initialized')
-      return null
+    if (!currentModel.value || !scene.value) {
+      throw new Error('No model loaded')
     }
 
     try {
       const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
-      const glb = await GLTF2Export.GLBAsync(scene.value, 'model')
-      return glb.glTFFiles['model.glb'] as Blob
+      const modelName = currentModel.value.name || 'model'
+      const glb = await GLTF2Export.GLBAsync(scene.value, modelName)
+      const fileName = `${modelName}.glb`
+      return glb.glTFFiles[fileName] as Blob
     } catch (error) {
-      console.error('Failed to export GLB:', error)
-      return null
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to export GLB: ${errorMessage}`)
     }
   }
 
@@ -279,7 +285,7 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
     }
   }
 
-  const disposeViewer = () => {
+  const dispose = () => {
     window.removeEventListener('resize', handleResize)
     
     if (currentModel.value) {
@@ -296,10 +302,12 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
       engine.value.dispose()
       engine.value = null
     }
+
+    isInitialized.value = false
   }
 
   onUnmounted(() => {
-    disposeViewer()
+    dispose()
   })
 
   return {
@@ -308,6 +316,7 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
     camera,
     light,
     currentModel,
+    isInitialized,
     isLoading,
     loadError,
     modelInfo,
@@ -320,6 +329,6 @@ export function use3DViewer(canvasRef: Ref<HTMLCanvasElement | null>) {
     resetCamera,
     setZoom,
     rotateModel,
-    disposeViewer,
+    dispose,
   }
 }
