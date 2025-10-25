@@ -12,7 +12,18 @@ export const useAuthStore = defineStore('auth', () => {
 
   const loginWithOAuth = (provider: OAuthProvider) => {
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
-    window.location.href = `${apiBaseUrl}/auth/${provider}`
+    
+    // 获取当前URL的redirect参数
+    const urlParams = new URLSearchParams(window.location.search)
+    const redirect = urlParams.get('redirect')
+    
+    // 构建OAuth URL，包含redirect参数
+    let oauthUrl = `${apiBaseUrl}/auth/${provider}`
+    if (redirect) {
+      oauthUrl += `?redirect=${encodeURIComponent(redirect)}`
+    }
+    
+    window.location.href = oauthUrl
   }
 
   const setToken = (newToken: string) => {

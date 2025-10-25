@@ -198,6 +198,61 @@ router.post('/change-password', requireAuth, async (req, res, next) => {
   }
 })
 
+// Mock OAuth 登录端点 - 用于开发和测试
+router.get('/:provider/mock', async (req, res, next) => {
+  try {
+    const { provider } = req.params
+    const { redirect } = req.query // 获取redirect参数
+    
+    if (!['github', 'google'].includes(provider)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Unsupported OAuth provider'
+      })
+    }
+    
+    // 创建mock用户数据
+    const mockUsers = {
+      github: {
+        id: `github_${Date.now()}`,
+        email: 'github.user@example.com',
+        name: 'GitHub Test User',
+        avatar: 'https://github.com/github.png',
+        provider: 'github',
+        providerId: '12345'
+      },
+      google: {
+        id: `google_${Date.now()}`,
+        email: 'google.user@example.com',
+        name: 'Google Test User',
+        avatar: 'https://lh3.googleusercontent.com/a/default-user',
+        provider: 'google',
+        providerId: '67890'
+      }
+    }
+    
+    const mockUser = mockUsers[provider]
+    
+    // 模拟OAuth登录流程
+    const result = await authService.loginOrCreateUser(mockUser)
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5175'
+    
+    // 构建重定向URL，包含redirect参数
+    let redirectUrl = `${frontendUrl}/auth/callback?token=${result.accessToken}&refresh_token=${result.refreshToken}`
+    
+    // 如果有redirect参数，添加到回调URL中
+    if (redirect) {
+      redirectUrl += `&redirect=${encodeURIComponent(redirect)}`
+    }
+    
+    // 直接重定向到前端回调页面，而不是返回JSON
+    res.redirect(redirectUrl)
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.get('/:provider', async (req, res, next) => {
   try {
     const { provider } = req.params

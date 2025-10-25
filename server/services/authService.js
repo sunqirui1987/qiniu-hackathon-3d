@@ -238,6 +238,56 @@ export class AuthService {
     return { success: true }
   }
   
+  // Mock OAuth 登录或创建用户 - 用于开发和测试
+  async loginOrCreateUser(oauthUser) {
+    let user = await db.findUserByProvider(oauthUser.provider, oauthUser.providerId)
+    
+    if (!user) {
+      // 检查是否已有相同邮箱的用户
+      const existingUser = await db.findUserByEmail(oauthUser.email)
+      if (existingUser) {
+        // 如果已有相同邮箱的用户，更新其OAuth信息
+        user = await db.updateUser(existingUser.id, {
+          provider: oauthUser.provider,
+          providerId: oauthUser.providerId,
+          avatar: oauthUser.avatar,
+          lastLoginAt: new Date().toISOString()
+        })
+      } else {
+        // 创建新用户
+        user = await db.createUser({
+          email: oauthUser.email,
+          name: oauthUser.name,
+          avatar: oauthUser.avatar,
+          provider: oauthUser.provider,
+          providerId: oauthUser.providerId
+        })
+      }
+      
+      console.log(`[Auth] New mock OAuth user created: ${user.email} (${oauthUser.provider})`)
+    } else {
+      await db.updateUser(user.id, {
+        name: oauthUser.name,
+        avatar: oauthUser.avatar,
+        lastLoginAt: new Date().toISOString()
+      })
+      
+      console.log(`[Auth] Mock OAuth user logged in: ${user.email} (${oauthUser.provider})`)
+    }
+    
+    const jwtAccessToken = generateAccessToken(user.id, user.email)
+    const refreshToken = generateRefreshToken(user.id, user.email)
+    
+    const refreshExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+    await db.saveRefreshToken(user.id, refreshToken, refreshExpiry)
+    
+    return {
+      user: user.toPublic(),
+      accessToken: jwtAccessToken,
+      refreshToken
+    }
+  }
+
   async loginWithOAuth(provider, code, state) {
     const stateVerification = oauthService.verifyState(state, provider)
     if (!stateVerification.valid) {
