@@ -162,10 +162,11 @@ describe('Viewer.vue', () => {
       await fileImport.vm.$emit('fileSelected', mockFile)
       await wrapper.vm.$nextTick()
       
-      setTimeout(() => {
-        expect(wrapper.find('.border-green-500').exists()).toBe(true)
-        expect(wrapper.text()).toContain('加载成功')
-      }, 100)
+      await new Promise(resolve => setTimeout(resolve, 150))
+      await wrapper.vm.$nextTick()
+      
+      expect(wrapper.find('.border-green-500').exists()).toBe(true)
+      expect(wrapper.text()).toContain('加载成功')
     })
 
     it('shows error notification on load failure', async () => {
@@ -357,10 +358,11 @@ describe('Viewer.vue', () => {
       await exportPanel.vm.$emit('export', 'fbx', 'test-model')
       await wrapper.vm.$nextTick()
       
-      setTimeout(() => {
-        expect(wrapper.find('.border-red-500').exists()).toBe(true)
-        expect(wrapper.text()).toContain('暂不支持')
-      }, 100)
+      await new Promise(resolve => setTimeout(resolve, 150))
+      await wrapper.vm.$nextTick()
+      
+      expect(wrapper.find('.border-red-500').exists()).toBe(true)
+      expect(wrapper.text()).toContain('暂不支持')
     })
 
     it('shows success notification after successful export', async () => {
@@ -382,10 +384,11 @@ describe('Viewer.vue', () => {
       await exportPanel.vm.$emit('export', 'stl', 'test-model')
       await wrapper.vm.$nextTick()
       
-      setTimeout(() => {
-        expect(wrapper.find('.border-green-500').exists()).toBe(true)
-        expect(wrapper.text()).toContain('导出成功')
-      }, 100)
+      await new Promise(resolve => setTimeout(resolve, 150))
+      await wrapper.vm.$nextTick()
+      
+      expect(wrapper.find('.border-green-500').exists()).toBe(true)
+      expect(wrapper.text()).toContain('导出成功')
     })
   })
 

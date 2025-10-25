@@ -88,7 +88,7 @@ describe('use3DViewer - Import/Export', () => {
 
   describe('Model Import', () => {
     it('should load GLB model successfully', async () => {
-      const { initViewer, loadModel, currentModel, isLoading } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, currentModel, isLoading } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -112,7 +112,7 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should load GLTF model successfully', async () => {
-      const { initViewer, loadModel } = use3DViewer(canvasRef)
+      const { initViewer, loadModel } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -133,7 +133,7 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should load STL model successfully', async () => {
-      const { initViewer, loadModel } = use3DViewer(canvasRef)
+      const { initViewer, loadModel } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -154,7 +154,7 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should load OBJ model successfully', async () => {
-      const { initViewer, loadModel } = use3DViewer(canvasRef)
+      const { initViewer, loadModel } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -175,7 +175,7 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should handle load error', async () => {
-      const { initViewer, loadModel, loadError } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, loadError } = use3DViewer({ canvasRef })
       initViewer()
 
       vi.mocked(SceneLoader.ImportMeshAsync).mockRejectedValue(new Error('Failed to load'))
@@ -185,7 +185,7 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should dispose previous model before loading new one', async () => {
-      const { initViewer, loadModel } = use3DViewer(canvasRef)
+      const { initViewer, loadModel } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh1 = {
@@ -218,7 +218,7 @@ describe('use3DViewer - Import/Export', () => {
 
   describe('STL Export', () => {
     it('should export model as STL', async () => {
-      const { initViewer, loadModel, exportSTL } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportSTL } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -237,32 +237,30 @@ describe('use3DViewer - Import/Export', () => {
       vi.mocked(STLExport.CreateSTL).mockReturnValue('STL_DATA')
 
       await loadModel('test.glb')
-      const blob = exportSTL()
+      const blob = await exportSTL()
 
       expect(STLExport.CreateSTL).toHaveBeenCalled()
       expect(blob).toBeInstanceOf(Blob)
-      expect(blob?.type).toBe('model/stl')
+      expect(blob?.type).toBe('application/octet-stream')
     })
 
-    it('should return null if no model loaded', () => {
-      const { initViewer, exportSTL } = use3DViewer(canvasRef)
+    it('should throw error if no model loaded', async () => {
+      const { initViewer, exportSTL } = use3DViewer({ canvasRef })
       initViewer()
 
-      const blob = exportSTL()
-      expect(blob).toBeNull()
+      await expect(exportSTL()).rejects.toThrow('No model loaded')
     })
 
-    it('should return null if scene not initialized', () => {
-      const { exportSTL } = use3DViewer(canvasRef)
+    it('should throw error if scene not initialized', async () => {
+      const { exportSTL } = use3DViewer({ canvasRef })
 
-      const blob = exportSTL()
-      expect(blob).toBeNull()
+      await expect(exportSTL()).rejects.toThrow('No model loaded')
     })
   })
 
   describe('GLB Export', () => {
     it('should export model as GLB', async () => {
-      const { initViewer, loadModel, exportGLB } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportGLB } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -281,7 +279,7 @@ describe('use3DViewer - Import/Export', () => {
       const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
       vi.mocked(GLTF2Export.GLBAsync).mockResolvedValue({
         glTFFiles: {
-          'model.glb': mockBlob,
+          'testModel.glb': mockBlob,
         },
       } as any)
 
@@ -292,15 +290,14 @@ describe('use3DViewer - Import/Export', () => {
       expect(blob).toBe(mockBlob)
     })
 
-    it('should return null if no scene initialized', async () => {
-      const { exportGLB } = use3DViewer(canvasRef)
+    it('should throw error if no scene initialized', async () => {
+      const { exportGLB } = use3DViewer({ canvasRef })
 
-      const blob = await exportGLB()
-      expect(blob).toBeNull()
+      await expect(exportGLB()).rejects.toThrow('No model loaded')
     })
 
     it('should handle export error', async () => {
-      const { initViewer, loadModel, exportGLB } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportGLB } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -319,15 +316,14 @@ describe('use3DViewer - Import/Export', () => {
       vi.mocked(GLTF2Export.GLBAsync).mockRejectedValue(new Error('Export failed'))
 
       await loadModel('test.glb')
-      const blob = await exportGLB()
-
-      expect(blob).toBeNull()
+      
+      await expect(exportGLB()).rejects.toThrow('Failed to export GLB')
     })
   })
 
   describe('GLTF Export', () => {
     it('should export model as GLTF with separate files', async () => {
-      const { initViewer, loadModel, exportGLTF } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportGLTF } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -360,7 +356,7 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should export GLTF without bin file', async () => {
-      const { initViewer, loadModel, exportGLTF } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportGLTF } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -391,14 +387,14 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should return null if no scene initialized', async () => {
-      const { exportGLTF } = use3DViewer(canvasRef)
+      const { exportGLTF } = use3DViewer({ canvasRef })
 
       const result = await exportGLTF()
       expect(result).toBeNull()
     })
 
     it('should handle export error', async () => {
-      const { initViewer, loadModel, exportGLTF } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportGLTF } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -425,7 +421,7 @@ describe('use3DViewer - Import/Export', () => {
 
   describe('OBJ Export', () => {
     it('should export model as OBJ', async () => {
-      const { initViewer, loadModel, exportOBJ } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportOBJ } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -452,14 +448,14 @@ describe('use3DViewer - Import/Export', () => {
     })
 
     it('should return null if no scene initialized', async () => {
-      const { exportOBJ } = use3DViewer(canvasRef)
+      const { exportOBJ } = use3DViewer({ canvasRef })
 
       const blob = await exportOBJ()
       expect(blob).toBeNull()
     })
 
     it('should handle export error', async () => {
-      const { initViewer, loadModel, exportOBJ } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, exportOBJ } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
@@ -488,7 +484,7 @@ describe('use3DViewer - Import/Export', () => {
 
   describe('Model Info', () => {
     it('should calculate model info after loading', async () => {
-      const { initViewer, loadModel, modelInfo } = use3DViewer(canvasRef)
+      const { initViewer, loadModel, modelInfo } = use3DViewer({ canvasRef })
       initViewer()
 
       const mockMesh = {
