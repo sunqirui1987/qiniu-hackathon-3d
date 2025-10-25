@@ -19,7 +19,8 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      redirect: '/studio'
+      component: () => import('../views/Studio.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/studio',
