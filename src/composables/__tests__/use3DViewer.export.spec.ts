@@ -4,6 +4,7 @@ import { use3DViewer } from '../use3DViewer'
 import {
   Vector3,
   SceneLoader,
+  type ISceneLoaderAsyncResult,
 } from '@babylonjs/core'
 
 vi.mock('@babylonjs/core', async () => {

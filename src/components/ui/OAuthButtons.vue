@@ -3,11 +3,14 @@
     <button 
       v-for="provider in providers"
       :key="provider.name"
-      @click="handleLogin(provider.name)"
       :disabled="loading"
       class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      @click="handleLogin(provider.name)"
     >
-      <component :is="provider.icon" class="w-5 h-5" />
+      <component
+        :is="provider.icon"
+        class="w-5 h-5"
+      />
       <span class="font-medium text-gray-700">
         使用 {{ provider.label }} 登录
       </span>
@@ -23,7 +26,7 @@ import type { OAuthProvider } from '@/types/auth'
 interface Provider {
   name: OAuthProvider
   label: string
-  icon: any
+  icon: () => ReturnType<typeof h>
 }
 
 const authStore = useAuthStore()
