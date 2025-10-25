@@ -268,7 +268,7 @@ const generateFromText = async () => {
       ai_model: textOptions.value.aiModel,
       license: 'private',
       is_a_t_pose: textOptions.value.isATPose,
-      symmetry_mode: textOptions.value.symmetryMode === 'off' ? 0 : textOptions.value.symmetryMode === 'auto' ? 1 : 2,
+      symmetry_mode: textOptions.value.symmetryMode || 'auto',
       seed: textOptions.value.seed,
     })
 
@@ -346,7 +346,7 @@ const generateFromImage = async () => {
       should_texture: imageOptions.value.shouldTexture,
       enable_pbr: imageOptions.value.enablePBR,
       texture_prompt: imageOptions.value.texturePrompt,
-      symmetry_mode: imageOptions.value.symmetryMode === 'off' ? 0 : imageOptions.value.symmetryMode === 'auto' ? 1 : 2,
+      symmetry_mode: imageOptions.value.symmetryMode || 'auto',
     })
 
     const taskId = response.result

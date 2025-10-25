@@ -60,7 +60,7 @@ export function useTextTo3D(apiKey: string) {
         ai_model: options.aiModel,
         license: 'private',
         is_a_t_pose: options.isATPose,
-        symmetry_mode: options.symmetryMode === 'off' ? 0 : options.symmetryMode === 'auto' ? 1 : 2,
+        symmetry_mode: options.symmetryMode || 'auto',
         seed: options.seed,
       }
 

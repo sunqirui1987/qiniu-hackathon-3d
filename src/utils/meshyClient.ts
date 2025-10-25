@@ -155,6 +155,7 @@ export class MeshyClient {
 
   async createTextTo3D(options: MeshyTextTo3DOptions): Promise<MeshyTaskResponse> {
     const requestBody: Record<string, unknown> = {
+      mode: 'preview',
       prompt: options.prompt,
     }
 
@@ -167,7 +168,7 @@ export class MeshyClient {
     if (options.seed) requestBody.seed = options.seed
     if (options.image_urls) requestBody.image_urls = options.image_urls
 
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/text-to-3d', requestBody)
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/text-to-3d', requestBody)
     return response.data
   }
 
@@ -188,7 +189,7 @@ export class MeshyClient {
     if (options.texture_image_url) requestBody.texture_image_url = options.texture_image_url
     if (options.moderation !== undefined) requestBody.moderation = options.moderation
 
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/image-to-3d', requestBody)
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/image-to-3d', requestBody)
     return response.data
   }
 
@@ -204,7 +205,7 @@ export class MeshyClient {
     if (options.origin_at) requestBody.origin_at = options.origin_at
     if (options.convert_format_only !== undefined) requestBody.convert_format_only = options.convert_format_only
 
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/remesh', requestBody)
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/remesh', requestBody)
     return response.data
   }
 
@@ -219,7 +220,7 @@ export class MeshyClient {
     if (options.enable_original_uv !== undefined) requestBody.enable_original_uv = options.enable_original_uv
     if (options.enable_pbr !== undefined) requestBody.enable_pbr = options.enable_pbr
 
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/retexture', requestBody)
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/retexture', requestBody)
     return response.data
   }
 
@@ -229,13 +230,13 @@ export class MeshyClient {
       return cached
     }
 
-    let endpoint = `/openapi/v1/text-to-3d/${taskId}`
+    let endpoint = `/openapi/v2/text-to-3d/${taskId}`
     if (taskType === 'image-to-3d') {
-      endpoint = `/openapi/v1/image-to-3d/${taskId}`
+      endpoint = `/openapi/v2/image-to-3d/${taskId}`
     } else if (taskType === 'remesh') {
-      endpoint = `/openapi/v1/remesh/${taskId}`
+      endpoint = `/openapi/v2/remesh/${taskId}`
     } else if (taskType === 'retexture') {
-      endpoint = `/openapi/v1/retexture/${taskId}`
+      endpoint = `/openapi/v2/retexture/${taskId}`
     }
 
     const response = await this.client.get<MeshyTaskStatus>(endpoint)
@@ -249,13 +250,13 @@ export class MeshyClient {
     sort_by?: string
     order?: 'asc' | 'desc'
   }): Promise<{ data: MeshyTaskStatus[], total: number }> {
-    const endpoint = `/openapi/v1/${taskType}`
+    const endpoint = `/openapi/v2/${taskType}`
     const response = await this.client.get(endpoint, { params })
     return response.data
   }
 
   async deleteTask(taskId: string, taskType: 'text-to-3d' | 'image-to-3d' | 'remesh' | 'retexture'): Promise<void> {
-    const endpoint = `/openapi/v1/${taskType}/${taskId}`
+    const endpoint = `/openapi/v2/${taskType}/${taskId}`
     await this.client.delete(endpoint)
     this.taskStatusCache.delete(taskId)
   }
