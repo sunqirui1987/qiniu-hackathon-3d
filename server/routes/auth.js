@@ -1,7 +1,7 @@
 /**
- * Authentication Routes
+ * 认证路由
  * 
- * Defines all authentication endpoints
+ * 定义所有认证相关的端点
  */
 
 import express from 'express'
@@ -11,6 +11,7 @@ import { requireAuth } from '../middleware/security.js'
 
 const router = express.Router()
 
+// 用户注册端点
 router.post('/register', async (req, res, next) => {
   try {
     const { email, password, name } = req.body
@@ -27,6 +28,7 @@ router.post('/register', async (req, res, next) => {
   }
 })
 
+// 用户登录端点
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body
@@ -43,6 +45,7 @@ router.post('/login', async (req, res, next) => {
   }
 })
 
+// 验证令牌端点
 router.post('/verify', async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization
@@ -79,6 +82,7 @@ router.post('/verify', async (req, res, next) => {
   }
 })
 
+// 获取用户信息端点
 router.get('/user', requireAuth, async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization
@@ -104,6 +108,7 @@ router.get('/user', requireAuth, async (req, res, next) => {
   }
 })
 
+// 用户登出端点
 router.post('/logout', requireAuth, async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization
@@ -129,6 +134,7 @@ router.post('/logout', requireAuth, async (req, res, next) => {
   }
 })
 
+// 刷新访问令牌端点
 router.post('/refresh', async (req, res, next) => {
   try {
     const { refreshToken } = req.body
@@ -152,6 +158,7 @@ router.post('/refresh', async (req, res, next) => {
   }
 })
 
+// 修改密码端点
 router.post('/change-password', requireAuth, async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization

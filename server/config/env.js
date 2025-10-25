@@ -1,20 +1,24 @@
 /**
- * Environment Configuration
+ * 环境配置
  * 
- * Centralizes all environment variables with defaults
- * Supports development and production environments
+ * 集中管理所有环境变量及其默认值
+ * 支持开发和生产环境
  */
 
 import dotenv from 'dotenv'
 
 dotenv.config()
 
+// 导出配置对象
 export const config = {
+  // 环境和端口配置
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.AUTH_PORT || '3001', 10),
   
+  // CORS 源配置
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   
+  // JWT 令牌配置
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET || 'your-super-secret-access-key-change-this-in-production',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'your-super-secret-refresh-key-change-this-in-production',
@@ -22,10 +26,12 @@ export const config = {
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d'
   },
   
+  // Bcrypt 密码哈希配置
   bcrypt: {
     saltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10)
   },
   
+  // 数据库配置
   database: {
     type: process.env.DB_TYPE || 'memory',
     host: process.env.DB_HOST || 'localhost',
@@ -35,12 +41,14 @@ export const config = {
     password: process.env.DB_PASSWORD || ''
   },
   
+  // 速率限制配置
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10)
   }
 }
 
+// 验证配置是否有效
 export function validateConfig() {
   const errors = []
   

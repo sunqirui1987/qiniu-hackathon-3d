@@ -1,32 +1,32 @@
-# Authentication API Documentation
+# 认证 API 文档
 
-## Overview
+## 概述
 
-This is a production-ready authentication backend with JWT-based authentication, secure password hashing, and comprehensive security features.
+这是一个生产就绪的认证后端，具有基于 JWT 的身份验证、安全密码哈希和全面的安全功能。
 
-## Base URL
+## 基础 URL
 
 ```
 http://localhost:3001
 ```
 
-## Authentication
+## 身份验证
 
-Most endpoints require a JWT access token. Include it in the Authorization header:
+大多数端点需要 JWT 访问令牌。在 Authorization 头中包含它：
 
 ```
 Authorization: Bearer <access_token>
 ```
 
-## API Endpoints
+## API 端点
 
-### 1. Register User
+### 1. 注册用户
 
-Create a new user account.
+创建一个新的用户账户。
 
-**Endpoint:** `POST /api/auth/register`
+**端点：** `POST /api/auth/register`
 
-**Request Body:**
+**请求体：**
 ```json
 {
   "email": "user@example.com",
@@ -35,13 +35,13 @@ Create a new user account.
 }
 ```
 
-**Password Requirements:**
-- At least 8 characters long
-- Contains at least one uppercase letter
-- Contains at least one lowercase letter
-- Contains at least one number
+**密码要求：**
+- 至少 8 个字符长
+- 包含至少一个大写字母
+- 包含至少一个小写字母
+- 包含至少一个数字
 
-**Success Response (201 Created):**
+**成功响应 (201 Created)：**
 ```json
 {
   "success": true,
@@ -62,19 +62,19 @@ Create a new user account.
 }
 ```
 
-**Error Responses:**
-- `400` - Validation error (weak password, invalid email, etc.)
-- `409` - User already exists
+**错误响应：**
+- `400` - 验证错误（弱密码、无效邮箱等）
+- `409` - 用户已存在
 
 ---
 
-### 2. Login
+### 2. 登录
 
-Authenticate a user and receive tokens.
+验证用户并接收令牌。
 
-**Endpoint:** `POST /api/auth/login`
+**端点：** `POST /api/auth/login`
 
-**Request Body:**
+**请求体：**
 ```json
 {
   "email": "user@example.com",
@@ -82,7 +82,7 @@ Authenticate a user and receive tokens.
 }
 ```
 
-**Success Response (200 OK):**
+**成功响应 (200 OK)：**
 ```json
 {
   "success": true,
@@ -103,24 +103,24 @@ Authenticate a user and receive tokens.
 }
 ```
 
-**Error Responses:**
-- `401` - Invalid credentials
-- `400` - Account uses OAuth login
+**错误响应：**
+- `401` - 无效的凭据
+- `400` - 账户使用 OAuth 登录
 
 ---
 
-### 3. Verify Token
+### 3. 验证令牌
 
-Verify if an access token is valid.
+验证访问令牌是否有效。
 
-**Endpoint:** `POST /api/auth/verify`
+**端点：** `POST /api/auth/verify`
 
-**Headers:**
+**请求头：**
 ```
 Authorization: Bearer <access_token>
 ```
 
-**Success Response (200 OK):**
+**成功响应 (200 OK)：**
 ```json
 {
   "success": true,
@@ -132,23 +132,23 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Error Responses:**
-- `401` - Invalid or expired token
+**错误响应：**
+- `401` - 无效或过期的令牌
 
 ---
 
-### 4. Get User Info
+### 4. 获取用户信息
 
-Get information about the authenticated user.
+获取已认证用户的信息。
 
-**Endpoint:** `GET /api/auth/user`
+**端点：** `GET /api/auth/user`
 
-**Headers:**
+**请求头：**
 ```
 Authorization: Bearer <access_token>
 ```
 
-**Success Response (200 OK):**
+**成功响应 (200 OK)：**
 ```json
 {
   "success": true,
@@ -166,24 +166,24 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Error Responses:**
-- `401` - Authentication required
-- `404` - User not found
+**错误响应：**
+- `401` - 需要身份验证
+- `404` - 用户未找到
 
 ---
 
-### 5. Logout
+### 5. 登出
 
-Logout the user and revoke the access token.
+登出用户并撤销访问令牌。
 
-**Endpoint:** `POST /api/auth/logout`
+**端点：** `POST /api/auth/logout`
 
-**Headers:**
+**请求头：**
 ```
 Authorization: Bearer <access_token>
 ```
 
-**Success Response (200 OK):**
+**成功响应 (200 OK)：**
 ```json
 {
   "success": true,
@@ -193,20 +193,20 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 6. Refresh Access Token
+### 6. 刷新访问令牌
 
-Get a new access token using a refresh token.
+使用刷新令牌获取新的访问令牌。
 
-**Endpoint:** `POST /api/auth/refresh`
+**端点：** `POST /api/auth/refresh`
 
-**Request Body:**
+**请求体：**
 ```json
 {
   "refreshToken": "eyJhbGc..."
 }
 ```
 
-**Success Response (200 OK):**
+**成功响应 (200 OK)：**
 ```json
 {
   "success": true,
@@ -226,23 +226,23 @@ Get a new access token using a refresh token.
 }
 ```
 
-**Error Responses:**
-- `401` - Invalid or expired refresh token
+**错误响应：**
+- `401` - 无效或过期的刷新令牌
 
 ---
 
-### 7. Change Password
+### 7. 修改密码
 
-Change the user's password.
+修改用户的密码。
 
-**Endpoint:** `POST /api/auth/change-password`
+**端点：** `POST /api/auth/change-password`
 
-**Headers:**
+**请求头：**
 ```
 Authorization: Bearer <access_token>
 ```
 
-**Request Body:**
+**请求体：**
 ```json
 {
   "currentPassword": "OldPass123",
@@ -250,7 +250,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Success Response (200 OK):**
+**成功响应 (200 OK)：**
 ```json
 {
   "success": true,
@@ -258,19 +258,19 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Error Responses:**
-- `400` - Validation error or OAuth account
-- `401` - Current password is incorrect
+**错误响应：**
+- `400` - 验证错误或 OAuth 账户
+- `401` - 当前密码不正确
 
 ---
 
-### 8. Health Check
+### 8. 健康检查
 
-Check if the server is running.
+检查服务器是否正在运行。
 
-**Endpoint:** `GET /health`
+**端点：** `GET /health`
 
-**Success Response (200 OK):**
+**成功响应 (200 OK)：**
 ```json
 {
   "status": "healthy",
@@ -282,37 +282,37 @@ Check if the server is running.
 
 ---
 
-## Security Features
+## 安全功能
 
-### Password Security
-- **Bcrypt Hashing**: Passwords are hashed using bcrypt with a cost factor of 12
-- **Password Strength Validation**: Enforces minimum 8 characters, uppercase, lowercase, and numbers
-- **No Plain-Text Storage**: Passwords are never stored in plain text
+### 密码安全
+- **Bcrypt 哈希**：密码使用 bcrypt 哈希，成本因子为 12
+- **密码强度验证**：强制最少 8 个字符，大写字母、小写字母和数字
+- **无明文存储**：密码从不以明文形式存储
 
-### Token Security
-- **JWT Tokens**: Industry-standard JSON Web Tokens
-- **Access Token**: Short-lived (15 minutes by default)
-- **Refresh Token**: Long-lived (7 days by default)
-- **Token Revocation**: Supports logout and token invalidation
-- **Token Type Validation**: Prevents using refresh tokens as access tokens
+### 令牌安全
+- **JWT 令牌**：业界标准的 JSON Web Tokens
+- **访问令牌**：短期有效（默认 15 分钟）
+- **刷新令牌**：长期有效（默认 7 天）
+- **令牌撤销**：支持登出和令牌失效
+- **令牌类型验证**：防止使用刷新令牌作为访问令牌
 
-### HTTP Security
-- **CORS Protection**: Configurable CORS with credentials support
-- **Security Headers**: Includes X-Content-Type-Options, X-Frame-Options, etc.
-- **HTTPS Ready**: Prepared for HTTPS deployment
-- **Request ID Tracking**: Each request gets a unique ID for debugging
+### HTTP 安全
+- **CORS 保护**：可配置的 CORS 和凭据支持
+- **安全头**：包括 X-Content-Type-Options、X-Frame-Options 等
+- **HTTPS 就绪**：为 HTTPS 部署做好准备
+- **请求 ID 跟踪**：每个请求获得唯一 ID 用于调试
 
-### Input Validation
-- **Email Validation**: Validates email format and length
-- **Input Sanitization**: Removes potentially dangerous characters
-- **SQL Injection Prevention**: Prepared for parameterized queries
-- **XSS Protection**: Input sanitization and security headers
+### 输入验证
+- **邮箱验证**：验证邮箱格式和长度
+- **输入清理**：移除潜在危险字符
+- **SQL 注入防护**：为参数化查询做好准备
+- **XSS 保护**：输入清理和安全头
 
 ---
 
-## Error Handling
+## 错误处理
 
-All errors follow this format:
+所有错误遵循此格式：
 
 ```json
 {
@@ -321,32 +321,32 @@ All errors follow this format:
 }
 ```
 
-Common HTTP status codes:
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request (validation errors)
-- `401` - Unauthorized (authentication required or failed)
-- `404` - Not Found
-- `409` - Conflict (e.g., user already exists)
-- `500` - Internal Server Error
+常见 HTTP 状态码：
+- `200` - 成功
+- `201` - 已创建
+- `400` - 错误请求（验证错误）
+- `401` - 未授权（需要或失败的身份验证）
+- `404` - 未找到
+- `409` - 冲突（例如，用户已存在）
+- `500` - 内部服务器错误
 
 ---
 
-## Token Lifecycle
+## 令牌生命周期
 
-1. **Registration/Login**: User receives access token (15min) and refresh token (7d)
-2. **API Requests**: Include access token in Authorization header
-3. **Token Expiry**: When access token expires, use refresh token to get new access token
-4. **Logout**: Both tokens are revoked
-5. **Security**: Refresh tokens are stored server-side and can be revoked
+1. **注册/登录**：用户接收访问令牌（15 分钟）和刷新令牌（7 天）
+2. **API 请求**：在 Authorization 头中包含访问令牌
+3. **令牌过期**：当访问令牌过期时，使用刷新令牌获取新的访问令牌
+4. **登出**：两个令牌都被撤销
+5. **安全性**：刷新令牌存储在服务器端，可以被撤销
 
 ---
 
-## Migration to Production Database
+## 迁移到生产数据库
 
-The current implementation uses an in-memory database for development. To migrate to production:
+当前实现使用内存数据库进行开发。要迁移到生产环境：
 
-1. **PostgreSQL Example:**
+1. **PostgreSQL 示例：**
    ```javascript
    import pg from 'pg'
    
@@ -359,18 +359,18 @@ The current implementation uses an in-memory database for development. To migrat
    })
    ```
 
-2. **Update Database Service**: Replace Map-based storage with SQL queries
-3. **Create Database Schema**: Users, refresh_tokens, revoked_tokens tables
-4. **Update Environment Variables**: Set DB_TYPE, DB_HOST, etc.
+2. **更新数据库服务**：用 SQL 查询替换基于 Map 的存储
+3. **创建数据库架构**：users、refresh_tokens、revoked_tokens 表
+4. **更新环境变量**：设置 DB_TYPE、DB_HOST 等
 
 ---
 
-## Rate Limiting
+## 速率限制
 
-The server is prepared for rate limiting. To implement:
+服务器已为速率限制做好准备。要实现：
 
-1. Install `express-rate-limit`
-2. Configure in middleware:
+1. 安装 `express-rate-limit`
+2. 在中间件中配置：
    ```javascript
    import rateLimit from 'express-rate-limit'
    
@@ -384,73 +384,73 @@ The server is prepared for rate limiting. To implement:
 
 ---
 
-## Environment Variables
+## 环境变量
 
-See `.env.auth.example` for all available configuration options.
+所有可用的配置选项请参见 `.env.auth.example`。
 
-**Critical for Production:**
-- Set strong `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`
-- Configure proper database (not in-memory)
-- Set appropriate CORS origins
-- Use HTTPS in production
-- Configure rate limiting
+**生产环境关键配置：**
+- 设置强 `JWT_ACCESS_SECRET` 和 `JWT_REFRESH_SECRET`
+- 配置适当的数据库（非内存）
+- 设置适当的 CORS 来源
+- 在生产环境中使用 HTTPS
+- 配置速率限制
 
 ---
 
-## Quick Start
+## 快速开始
 
-### Development
+### 开发环境
 
 ```bash
-# Install dependencies
+# 安装依赖
 npm install bcryptjs jsonwebtoken dotenv
 
-# Copy environment file
+# 复制环境文件
 cp .env.auth.example .env.auth
 
-# Start the server
+# 启动服务器
 node auth-server.js
 ```
 
-### Production
+### 生产环境
 
 ```bash
-# Set production environment
+# 设置生产环境
 export NODE_ENV=production
 
-# Configure secrets in .env.auth
-# Set up production database
-# Configure HTTPS reverse proxy (nginx/Apache)
+# 在 .env.auth 中配置密钥
+# 设置生产数据库
+# 配置 HTTPS 反向代理（nginx/Apache）
 
-# Start with process manager
+# 使用进程管理器启动
 pm2 start auth-server.js --name auth-server
 ```
 
 ---
 
-## Testing with cURL
+## 使用 cURL 测试
 
-### Register
+### 注册
 ```bash
 curl -X POST http://localhost:3001/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Test123456","name":"Test User"}'
 ```
 
-### Login
+### 登录
 ```bash
 curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Test123456"}'
 ```
 
-### Verify Token
+### 验证令牌
 ```bash
 curl -X POST http://localhost:3001/api/auth/verify \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
-### Get User
+### 获取用户
 ```bash
 curl http://localhost:3001/api/auth/user \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
@@ -458,6 +458,6 @@ curl http://localhost:3001/api/auth/user \
 
 ---
 
-## Support
+## 支持
 
-For issues and questions, please refer to the project documentation or contact the development team.
+有关问题和疑问，请参阅项目文档或联系开发团队。

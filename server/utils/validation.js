@@ -1,9 +1,10 @@
 /**
- * Input Validation Utilities
+ * 输入验证工具
  * 
- * Validates and sanitizes user inputs
+ * 验证和清理用户输入
  */
 
+// 验证邮箱格式
 export function validateEmail(email) {
   if (!email || typeof email !== 'string') {
     return { valid: false, error: 'Email is required' }
@@ -21,6 +22,7 @@ export function validateEmail(email) {
   return { valid: true }
 }
 
+// 验证密码基本要求
 export function validatePassword(password) {
   if (!password || typeof password !== 'string') {
     return { valid: false, error: 'Password is required' }
@@ -37,6 +39,7 @@ export function validatePassword(password) {
   return { valid: true }
 }
 
+// 验证姓名
 export function validateName(name) {
   if (!name || typeof name !== 'string') {
     return { valid: false, error: 'Name is required' }
@@ -53,9 +56,11 @@ export function validateName(name) {
   return { valid: true }
 }
 
+// 清理输入（移除潜在危险字符）
 export function sanitizeInput(input) {
   if (typeof input !== 'string') return input
   
+  // 移除前后空格和潜在的 XSS 字符
   return input
     .trim()
     .replace(/[<>]/g, '')

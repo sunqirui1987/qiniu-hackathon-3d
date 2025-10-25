@@ -1,19 +1,19 @@
 /**
- * Production-Ready Authentication Server
+ * 生产就绪的认证服务器
  * 
- * A secure, production-grade authentication backend with:
- * - Bcrypt password hashing
- * - JWT token management with access & refresh tokens
- * - Input validation and sanitization
- * - Rate limiting support
- * - Database abstraction layer
- * - Comprehensive error handling
- * - Security best practices
+ * 一个安全的、生产级认证后端，具有以下功能：
+ * - Bcrypt 密码哈希
+ * - JWT 令牌管理（访问令牌和刷新令牌）
+ * - 输入验证和清理
+ * - 速率限制支持
+ * - 数据库抽象层
+ * - 全面的错误处理
+ * - 安全最佳实践
  * 
- * Usage:
- *   1. Install dependencies: npm install bcryptjs jsonwebtoken express-validator helmet dotenv
- *   2. Configure .env file (see .env.example)
- *   3. Run: node auth-server.js
+ * 使用方法：
+ *   1. 安装依赖：npm install bcryptjs jsonwebtoken express-validator helmet dotenv
+ *   2. 配置 .env 文件（参见 .env.example）
+ *   3. 运行：node auth-server.js
  */
 
 import express from 'express'
@@ -27,8 +27,10 @@ import { securityMiddleware } from './server/middleware/security.js'
 const app = express()
 const PORT = config.port
 
+// 应用安全中间件
 app.use(securityMiddleware)
 
+// 配置 CORS
 app.use(cors({
   origin: config.corsOrigin,
   credentials: true,
@@ -36,9 +38,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
+// 解析 JSON 和 URL 编码的请求体
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// 为每个请求添加唯一 ID 用于跟踪和调试
 app.use((req, res, next) => {
   const requestId = crypto.randomUUID()
   req.id = requestId
@@ -48,6 +52,7 @@ app.use((req, res, next) => {
   next()
 })
 
+// 健康检查端点
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
@@ -57,8 +62,10 @@ app.get('/health', (req, res) => {
   })
 })
 
+// 挂载认证路由
 app.use('/api/auth', authRouter)
 
+// 处理 404 错误
 app.use((req, res, next) => {
   res.status(404).json({
     success: false,
@@ -67,6 +74,7 @@ app.use((req, res, next) => {
   })
 })
 
+// 全局错误处理中间件
 app.use(errorHandler)
 
 const server = app.listen(PORT, () => {
@@ -106,6 +114,7 @@ const server = app.listen(PORT, () => {
   console.log('')
 })
 
+// 优雅关闭处理
 process.on('SIGTERM', () => {
   console.log('\n📛 SIGTERM received, shutting down gracefully...')
   server.close(() => {
