@@ -1,143 +1,246 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useBambuConnect } from '../useBambuConnect'
+
+const mockWindowOpen = vi.fn()
 
 describe('useBambuConnect', () => {
   beforeEach(() => {
+    global.window.open = mockWindowOpen
+  })
+
+  afterEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should initialize with default state', () => {
-    const { state } = useBambuConnect()
+  describe('initial state', () => {
+    it('should initialize with disconnected state', () => {
+      const { connected, printers, error, hasPrinters, hasError, isChecking } = useBambuConnect()
 
-    expect(state.isConnectInstalled).toBe(false)
-    expect(state.connectVersion).toBeNull()
-    expect(state.isConnecting).toBe(false)
-    expect(state.lastError).toBeNull()
+      expect(connected.value).toBe(false)
+      expect(printers.value).toEqual([])
+      expect(error.value).toBeNull()
+      expect(hasPrinters.value).toBe(false)
+      expect(hasError.value).toBe(false)
+      expect(isChecking.value).toBe(false)
+    })
   })
 
-  it('should detect platform correctly', () => {
-    const { detectPlatform } = useBambuConnect()
+  describe('checkBambuConnect', () => {
+    it('should successfully connect to Bambu Connect', async () => {
+      const mockWindow = { close: vi.fn() }
+      mockWindowOpen.mockReturnValue(mockWindow)
 
-    const platform = detectPlatform()
-    expect(['windows', 'macos-arm64', 'macos-x64', 'linux']).toContain(platform)
+      const { checkBambuConnect, connected, printers, hasPrinters } = useBambuConnect()
+
+      const result = await checkBambuConnect()
+
+      expect(result).toBe(true)
+      expect(connected.value).toBe(true)
+      expect(printers.value.length).toBeGreaterThan(0)
+      expect(hasPrinters.value).toBe(true)
+      expect(mockWindowOpen).toHaveBeenCalledWith('bambustudio://check', '_blank')
+      expect(mockWindow.close).toHaveBeenCalled()
+    })
+
+    it('should set isChecking during check', async () => {
+      mockWindowOpen.mockReturnValue({ close: vi.fn() })
+
+      const { checkBambuConnect, isChecking } = useBambuConnect()
+
+      expect(isChecking.value).toBe(false)
+
+      const promise = checkBambuConnect()
+      expect(isChecking.value).toBe(true)
+
+      await promise
+      expect(isChecking.value).toBe(false)
+    })
+
+    it('should handle connection errors', async () => {
+      mockWindowOpen.mockImplementation(() => {
+        throw new Error('Connection failed')
+      })
+
+      const { checkBambuConnect, connected, error, hasError } = useBambuConnect()
+
+      const result = await checkBambuConnect()
+
+      expect(result).toBe(false)
+      expect(connected.value).toBe(false)
+      expect(error.value).toBe('Connection failed')
+      expect(hasError.value).toBe(true)
+    })
   })
 
-  it('should get Bambu Connect download URL', () => {
-    const { getBambuConnectDownloadUrl } = useBambuConnect()
+  describe('sendToPrint', () => {
+    it('should send model to printer successfully', async () => {
+      mockWindowOpen.mockReturnValue({ close: vi.fn() })
 
-    const url = getBambuConnectDownloadUrl()
-    expect(url).toContain('github.com')
+      const { checkBambuConnect, sendToPrint } = useBambuConnect()
+      await checkBambuConnect()
+
+      const result = await sendToPrint('/models/test.stl', {
+        printer: 'Bambu Lab X1 Carbon',
+        material: 'PLA',
+        layerHeight: 0.2,
+        infillDensity: 20,
+        supports: true,
+        temperature: 200,
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.message).toBe('Model sent to Bambu Studio successfully')
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        expect.stringContaining('bambustudio://print'),
+        '_blank'
+      )
+    })
+
+    it('should include all print settings in URL', async () => {
+      mockWindowOpen.mockReturnValue({ close: vi.fn() })
+
+      const { checkBambuConnect, sendToPrint } = useBambuConnect()
+      await checkBambuConnect()
+
+      await sendToPrint('/models/test.stl', {
+        printer: 'Bambu Lab X1 Carbon',
+        material: 'PLA',
+        layerHeight: 0.2,
+        infillDensity: 20,
+        supports: true,
+        temperature: 200,
+      })
+
+      const callArg = mockWindowOpen.mock.calls[1][0] as string
+      expect(callArg).toContain('file=%2Fmodels%2Ftest.stl')
+      expect(callArg).toContain('printer=Bambu+Lab+X1+Carbon')
+      expect(callArg).toContain('material=PLA')
+      expect(callArg).toContain('layer_height=0.2')
+      expect(callArg).toContain('infill_density=20')
+      expect(callArg).toContain('supports=true')
+      expect(callArg).toContain('temperature=200')
+    })
+
+    it('should fail if not connected', async () => {
+      const { sendToPrint, error, hasError } = useBambuConnect()
+
+      const result = await sendToPrint('/models/test.stl', {
+        printer: 'Bambu Lab X1 Carbon',
+        material: 'PLA',
+        layerHeight: 0.2,
+        infillDensity: 20,
+        supports: false,
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.message).toContain('not connected')
+      expect(error.value).toContain('not connected')
+      expect(hasError.value).toBe(true)
+    })
+
+    it('should handle optional temperature parameter', async () => {
+      mockWindowOpen.mockReturnValue({ close: vi.fn() })
+
+      const { checkBambuConnect, sendToPrint } = useBambuConnect()
+      await checkBambuConnect()
+
+      await sendToPrint('/models/test.stl', {
+        printer: 'Bambu Lab X1 Carbon',
+        material: 'PLA',
+        layerHeight: 0.2,
+        infillDensity: 20,
+        supports: false,
+      })
+
+      const callArg = mockWindowOpen.mock.calls[1][0] as string
+      expect(callArg).not.toContain('temperature')
+    })
   })
 
-  it('should return error when sending print without Bambu Connect installed', async () => {
-    const { sendToPrint } = useBambuConnect()
+  describe('getPrinters', () => {
+    it('should return printer list when connected', async () => {
+      mockWindowOpen.mockReturnValue({ close: vi.fn() })
 
-    const result = await sendToPrint('/test/path.3mf', 'test-model')
+      const { checkBambuConnect, getPrinters } = useBambuConnect()
+      await checkBambuConnect()
 
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Bambu Connect')
+      const printers = await getPrinters()
+
+      expect(printers.length).toBeGreaterThan(0)
+      expect(printers).toContain('Bambu Lab X1 Carbon')
+    })
+
+    it('should auto-connect if not connected', async () => {
+      mockWindowOpen.mockReturnValue({ close: vi.fn() })
+
+      const { getPrinters, connected } = useBambuConnect()
+
+      expect(connected.value).toBe(false)
+
+      const printers = await getPrinters()
+
+      expect(connected.value).toBe(true)
+      expect(printers.length).toBeGreaterThan(0)
+    })
+
+    it('should handle errors', async () => {
+      mockWindowOpen.mockImplementation(() => {
+        throw new Error('Failed to get printers')
+      })
+
+      const { getPrinters, error, hasError } = useBambuConnect()
+
+      const printers = await getPrinters()
+
+      expect(printers).toEqual([])
+      expect(error.value).toBe('Failed to get printers')
+      expect(hasError.value).toBe(true)
+    })
   })
 
-  it('should validate file format when sending to print', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
+  describe('reset', () => {
+    it('should reset all state', async () => {
+      mockWindowOpen.mockReturnValue({ close: vi.fn() })
 
-    const result = await composable.sendToPrint('/test/path.txt', 'test-model')
+      const { checkBambuConnect, reset, connected, printers, error, isChecking } = useBambuConnect()
 
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('不支持的文件格式')
+      await checkBambuConnect()
+
+      expect(connected.value).toBe(true)
+      expect(printers.value.length).toBeGreaterThan(0)
+
+      reset()
+
+      expect(connected.value).toBe(false)
+      expect(printers.value).toEqual([])
+      expect(error.value).toBeNull()
+      expect(isChecking.value).toBe(false)
+    })
   })
 
-  it('should construct correct URL scheme for print', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
+  describe('computed properties', () => {
+    it('should compute hasPrinters correctly', () => {
+      const { printers, hasPrinters } = useBambuConnect()
 
-    const result = await composable.sendToPrint('/test/path.3mf', 'test-model')
+      expect(hasPrinters.value).toBe(false)
 
-    expect(result.success).toBe(true)
-    expect(result.urlScheme).toContain('bambu-connect://import-file')
-    expect(result.urlScheme).toContain('path=')
-    expect(result.urlScheme).toContain('name=')
-    expect(result.urlScheme).toContain('version=1.0.0')
-  })
+      printers.value = ['Printer 1']
+      expect(hasPrinters.value).toBe(true)
 
-  it('should return empty array when discovering printers without Bambu Connect', async () => {
-    const { discoverPrinters } = useBambuConnect()
+      printers.value = []
+      expect(hasPrinters.value).toBe(false)
+    })
 
-    const printers = await discoverPrinters()
+    it('should compute hasError correctly', () => {
+      const { error, hasError } = useBambuConnect()
 
-    expect(printers).toEqual([])
-  })
+      expect(hasError.value).toBe(false)
 
-  it('should return managed printer when Bambu Connect is installed', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
+      error.value = 'Some error'
+      expect(hasError.value).toBe(true)
 
-    const printers = await composable.discoverPrinters()
-
-    expect(printers).toHaveLength(1)
-    expect(printers[0].id).toBe('bambu-connect-managed')
-    expect(printers[0].type).toBe('bambu-connect')
-  })
-
-  it('should handle .gcode.3mf file extension correctly', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
-
-    const result = await composable.sendToPrint('/test/path.gcode.3mf', 'test-model')
-
-    expect(result.success).toBe(true)
-  })
-
-  it('should handle .gcode file extension correctly', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
-
-    const result = await composable.sendToPrint('/test/path.gcode', 'test-model')
-
-    expect(result.success).toBe(true)
-  })
-
-  it('should handle .3mf file extension correctly', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
-
-    const result = await composable.sendToPrint('/test/path.3mf', 'test-model')
-
-    expect(result.success).toBe(true)
-  })
-
-  it('should encode file path and name in URL scheme', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
-
-    const result = await composable.sendToPrint(
-      '/test/path with spaces.3mf',
-      'test model with spaces'
-    )
-
-    expect(result.success).toBe(true)
-    expect(result.urlScheme).toContain('path=%2Ftest%2Fpath%20with%20spaces.3mf')
-    expect(result.urlScheme).toContain('name=test%20model%20with%20spaces')
-  })
-
-  it('should return error when file path is empty', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
-
-    const result = await composable.sendToPrint('', 'test-model')
-
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('文件路径和文件名不能为空')
-  })
-
-  it('should return error when file name is empty', async () => {
-    const composable = useBambuConnect()
-    composable.state.isConnectInstalled = true
-
-    const result = await composable.sendToPrint('/test/path.3mf', '')
-
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('文件路径和文件名不能为空')
+      error.value = null
+      expect(hasError.value).toBe(false)
+    })
   })
 })
