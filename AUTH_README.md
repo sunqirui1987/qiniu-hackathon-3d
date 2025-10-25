@@ -40,6 +40,7 @@ npm install
 - `bcryptjs` - 密码哈希
 - `jsonwebtoken` - JWT 令牌管理
 - `dotenv` - 环境配置
+- `better-sqlite3` - SQLite 数据库
 - `express` - Web 框架（已安装）
 - `cors` - CORS 中间件（已安装）
 
@@ -53,6 +54,8 @@ cp .env.auth.example .env.auth
 
 ### 3. 启动服务器
 
+#### 使用 Node.js
+
 ```bash
 # 开发模式
 npm run auth-server:dev
@@ -61,7 +64,34 @@ npm run auth-server:dev
 npm run auth-server
 ```
 
+#### 使用 Bun（更快的 JavaScript 运行时）
+
+```bash
+# 开发模式
+npm run auth-server:bun:dev
+
+# 生产模式
+npm run auth-server:bun
+```
+
 服务器将在 `http://localhost:3001` 上启动
+
+## 数据库
+
+### SQLite 存储
+
+默认使用 SQLite 作为数据库，提供持久化存储：
+- 数据库文件位置：`data/auth.db`
+- 自动创建表和索引
+- 支持 WAL 模式以提高并发性能
+- 数据在服务器重启后保持
+
+SQLite 特点：
+- ✅ 零配置：无需额外安装数据库服务器
+- ✅ 文件存储：所有数据存储在单个文件中
+- ✅ ACID 兼容：保证数据一致性
+- ✅ 高性能：适合中小型应用
+- ✅ 轻量级：占用资源少
 
 ## API 端点
 
