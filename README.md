@@ -119,7 +119,7 @@ cp .env.example .env
 2. 编辑 `.env` 文件,设置后端服务器地址:
 ```bash
 # 开发环境示例
-VITE_API_BASE_URL=http://localhost:3000
+VITE_API_BASE_URL=http://localhost:3001
 
 # 生产环境示例
 VITE_API_BASE_URL=https://api.yourdomain.com

@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value && !!token.value)
 
   const loginWithOAuth = (provider: OAuthProvider) => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
     window.location.href = `${apiBaseUrl}/auth/${provider}`
   }
 
