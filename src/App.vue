@@ -114,6 +114,42 @@
             </svg>
             当前模型: {{ modelStore.currentModel.name }}
           </div>
+          
+          <div
+            v-if="authStore.isAuthenticated"
+            class="flex items-center space-x-3"
+          >
+            <div class="flex items-center space-x-2">
+              <img
+                v-if="authStore.user?.avatar"
+                :src="authStore.user.avatar"
+                :alt="authStore.user.name"
+                class="w-8 h-8 rounded-full"
+              />
+              <span class="hidden md:inline text-sm text-gray-700">
+                {{ authStore.user?.name }}
+              </span>
+            </div>
+            <button
+              @click="handleLogout"
+              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+              title="退出登录"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -137,14 +173,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, h, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import { useModelStore } from '@/stores/model'
+import { useAuthStore } from '@/stores/auth'
 
 const uiStore = useUIStore()
 const modelStore = useModelStore()
+const authStore = useAuthStore()
 const route = useRoute()
+const router = useRouter()
+
+onMounted(() => {
+  authStore.init()
+})
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/login')
+}
 
 const HomeIcon = () => h('svg', { 
   class: 'w-5 h-5',
