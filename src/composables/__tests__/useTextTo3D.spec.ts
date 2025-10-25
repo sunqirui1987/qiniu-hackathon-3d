@@ -1,18 +1,16 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useTextTo3D } from '../useTextTo3D'
-import { MeshyClient } from '../../utils/meshyClient'
 
-vi.mock('../../utils/meshyClient', () => {
-  class MockMeshyClient {
-    createTextTo3DPreview = vi.fn()
-    createTextTo3DRefine = vi.fn()
-    pollTaskUntilComplete = vi.fn()
-    cancelTask = vi.fn()
-  }
-  return {
-    MeshyClient: MockMeshyClient,
-  }
-})
+const mockClientInstance = vi.hoisted(() => ({
+  createTextTo3DPreview: vi.fn(),
+  createTextTo3DRefine: vi.fn(),
+  pollTaskUntilComplete: vi.fn(),
+  cancelTask: vi.fn(),
+}))
+
+vi.mock('../../utils/meshyClient', () => ({
+  MeshyClient: vi.fn(() => mockClientInstance()),
+}))
 
 vi.mock('../../utils/errorHandler', () => ({
   getUserFriendlyErrorMessage: vi.fn((error) => {
@@ -22,15 +20,12 @@ vi.mock('../../utils/errorHandler', () => ({
 }))
 
 describe('useTextTo3D', () => {
-  let mockClient: {
-    createTextTo3DPreview: ReturnType<typeof vi.fn>
-    createTextTo3DRefine: ReturnType<typeof vi.fn>
-    pollTaskUntilComplete: ReturnType<typeof vi.fn>
-    cancelTask: ReturnType<typeof vi.fn>
-  }
-
   beforeEach(() => {
-    mockClient = new (MeshyClient as never)()
+    const instance = mockClientInstance()
+    instance.createTextTo3DPreview.mockReset()
+    instance.createTextTo3DRefine.mockReset()
+    instance.pollTaskUntilComplete.mockReset()
+    instance.cancelTask.mockReset()
   })
 
   afterEach(() => {
@@ -74,11 +69,11 @@ describe('useTextTo3D', () => {
         finished_at: '2024-01-01T00:10:00Z',
       }
 
-      mockClient.createTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
-      mockClient.pollTaskUntilComplete
+      mockClientInstance().createTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
+      mockClientInstance().pollTaskUntilComplete
         .mockResolvedValueOnce(mockPreviewStatus)
         .mockResolvedValueOnce(mockRefineStatus)
-      mockClient.createTextTo3DRefine.mockResolvedValue(mockRefineResponse)
+      mockClientInstance().createTextTo3DRefine.mockResolvedValue(mockRefineResponse)
 
       const { generateModel, status, progress, result } = useTextTo3D('test-api-key')
 
@@ -99,9 +94,9 @@ describe('useTextTo3D', () => {
       const mockPreviewResponse = { result: 'preview-task-id' }
       const mockRefineResponse = { result: 'refine-task-id' }
 
-      mockClient.createTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
-      mockClient.createTextTo3DRefine.mockResolvedValue(mockRefineResponse)
-      mockClient.pollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
+      mockClientInstance().createTextTo3DPreview.mockResolvedValue(mockPreviewResponse)
+      mockClientInstance().createTextTo3DRefine.mockResolvedValue(mockRefineResponse)
+      mockClientInstance().pollTaskUntilComplete.mockImplementation(async (_taskId, _type, options) => {
         if (options?.onProgress) {
           options.onProgress(50)
           options.onProgress(75)
@@ -125,7 +120,7 @@ describe('useTextTo3D', () => {
     })
 
     it('should handle generation errors', async () => {
-      mockClient.createTextTo3DPreview.mockRejectedValue(new Error('API Error'))
+      mockClientInstance().createTextTo3DPreview.mockRejectedValue(new Error('API Error'))
 
       const { generateModel, status, error, hasError } = useTextTo3D('test-api-key')
 
@@ -137,7 +132,7 @@ describe('useTextTo3D', () => {
     })
 
     it('should reset state before starting new generation', async () => {
-      mockClient.createTextTo3DPreview.mockRejectedValue(new Error('First error'))
+      mockClientInstance().createTextTo3DPreview.mockRejectedValue(new Error('First error'))
 
       const { generateModel, status, error } = useTextTo3D('test-api-key')
 
@@ -145,9 +140,9 @@ describe('useTextTo3D', () => {
       expect(status.value).toBe('error')
       expect(error.value).toBe('First error')
 
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
-      mockClient.createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockClientInstance().createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
+      mockClientInstance().createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
+      mockClientInstance().pollTaskUntilComplete.mockResolvedValue({
         id: 'refine-id',
         status: 'SUCCEEDED' as const,
         progress: 100,
@@ -165,8 +160,8 @@ describe('useTextTo3D', () => {
 
   describe('cancel', () => {
     it('should cancel ongoing generation', async () => {
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'preview-task-id' })
-      mockClient.pollTaskUntilComplete.mockImplementation(
+      mockClientInstance().createTextTo3DPreview.mockResolvedValue({ result: 'preview-task-id' })
+      mockClientInstance().pollTaskUntilComplete.mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 10000))
       )
 
@@ -183,7 +178,7 @@ describe('useTextTo3D', () => {
       expect(status.value).toBe('cancelled')
       expect(error.value).toBe('Generation cancelled by user')
       expect(isCancelled.value).toBe(true)
-      expect(mockClient.cancelTask).toHaveBeenCalledWith('preview-task-id')
+      expect(mockClientInstance().cancelTask).toHaveBeenCalledWith('preview-task-id')
     })
 
     it('should not cancel if not generating', () => {
@@ -192,15 +187,15 @@ describe('useTextTo3D', () => {
       cancel()
 
       expect(status.value).toBe('idle')
-      expect(mockClient.cancelTask).not.toHaveBeenCalled()
+      expect(mockClientInstance().cancelTask).not.toHaveBeenCalled()
     })
   })
 
   describe('retry', () => {
     it('should retry generation and increment retry count', async () => {
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
-      mockClient.createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockClientInstance().createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
+      mockClientInstance().createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
+      mockClientInstance().pollTaskUntilComplete.mockResolvedValue({
         id: 'refine-id',
         status: 'SUCCEEDED' as const,
         progress: 100,
@@ -225,9 +220,9 @@ describe('useTextTo3D', () => {
 
   describe('reset', () => {
     it('should reset all state to initial values', async () => {
-      mockClient.createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
-      mockClient.createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
-      mockClient.pollTaskUntilComplete.mockResolvedValue({
+      mockClientInstance().createTextTo3DPreview.mockResolvedValue({ result: 'task-id' })
+      mockClientInstance().createTextTo3DRefine.mockResolvedValue({ result: 'refine-id' })
+      mockClientInstance().pollTaskUntilComplete.mockResolvedValue({
         id: 'refine-id',
         status: 'SUCCEEDED' as const,
         progress: 100,
