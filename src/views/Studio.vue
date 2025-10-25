@@ -1,5 +1,5 @@
 <template>
-  <div class="studio-container h-screen flex bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
+  <div class="studio-container h-[calc(100vh-4rem)] flex bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden">
     <!-- 左侧Tab面板组件 -->
     <LeftTabPanel
       :active-tab="activeTab"
@@ -364,7 +364,7 @@ onMounted(() => {
 
 /* 中央查看器区域 */
 .central-viewer {
-  min-height: 100vh;
+  height: 100%;
   position: relative;
 }
 
@@ -394,7 +394,8 @@ onMounted(() => {
   }
   
   .central-viewer {
-    min-height: 50vh;
+    height: 50vh;
+    flex: 1;
   }
 }
 </style>
