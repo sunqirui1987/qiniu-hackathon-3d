@@ -184,6 +184,19 @@ const afterEnter = () => {
 }
 </script>
 
+<style>
+/* 禁止整个页面滚动 */
+html, body {
+  overflow: hidden !important;
+  height: 100vh;
+}
+
+#app {
+  height: 100vh;
+  overflow: hidden;
+}
+</style>
+
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {

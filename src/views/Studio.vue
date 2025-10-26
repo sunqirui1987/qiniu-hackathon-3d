@@ -1,5 +1,14 @@
 <template>
-  <div class="studio-container h-[calc(100vh-4rem)] flex bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden">
+  <!-- 页面Loading组件 -->
+  <div v-if="isPageLoading" class="fixed inset-0 bg-white dark:bg-gray-900 flex items-center justify-center z-50">
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
+      <p class="text-gray-600 dark:text-gray-300 text-lg">加载中...</p>
+      <p class="text-gray-400 dark:text-gray-500 text-sm mt-2">正在初始化3D工作室</p>
+    </div>
+  </div>
+
+  <div v-else class="studio-container h-[calc(100vh-4rem)] flex bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden">
     <!-- 左侧Tab面板组件 -->
     <LeftTabPanel
       :active-tab="activeTab"
@@ -99,6 +108,7 @@ const { generateModel: generateFromText, isGenerating: textGenerating, progress:
 const { generateFromImage, isGenerating: imageGenerating, progress: imageProgress, status: imageStatus } = useImageTo3D()
 
 // 响应式数据
+const isPageLoading = ref(true) // 页面加载状态
 const activeTab = ref('text-to-3d')
 const activeMainMenu = ref('model')
 const historyCategory = ref('all')
@@ -590,18 +600,30 @@ const showNotification = (messageOrData: string | { message: string, type: 'succ
 }
 
 // 生命周期
-onMounted(() => {
-  // 如果URL中有模型参数，直接加载
-  if (route.query.model) {
-    selectedItem.value = {
-      url: route.query.model as string,
-      type: 'external',
-      created_at: new Date().toISOString()
+onMounted(async () => {
+  try {
+    // 如果URL中有模型参数，直接加载
+    if (route.query.model) {
+      selectedItem.value = {
+        url: route.query.model as string,
+        type: 'external',
+        created_at: new Date().toISOString()
+      }
     }
+    
+    // 加载历史数据
+    await loadHistoryData()
+    
+    // 确保最小loading时间，提供更好的用户体验
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+  } catch (error) {
+    console.error('页面初始化失败:', error)
+    showNotification('页面初始化失败，请刷新重试', 'error')
+  } finally {
+    // 无论成功还是失败，都要隐藏loading
+    isPageLoading.value = false
   }
-  
-  // 加载历史数据
-  loadHistoryData()
 })
 </script>
 
