@@ -22,10 +22,10 @@
       @update:retopology-options="retopologyOptions = $event"
       @update:texture-options="textureOptions = $event"
       @update:texture-prompt="texturePrompt = $event"
-      @text-to-3d="handleTextTo3D"
-      @image-to-3d="handleImageTo3D"
-      @retopology="handleRetopology"
-      @texture-generation="handleTextureGeneration"
+      @generate-from-text="handleTextTo3D"
+      @generate-from-image="handleImageTo3D"
+      @start-retopology="handleRetopology"
+      @generate-texture="handleTextureGeneration"
     />
 
     <!-- 中间3D查看器区域 -->
@@ -88,7 +88,7 @@ import { meshyClient } from '@/utils/meshyClient'
 const route = useRoute()
 
 // Composables
-const { generateFromText, isGenerating: textGenerating, progress: textProgress, status: textStatus } = useTextTo3D()
+const { generateModel: generateFromText, isGenerating: textGenerating, progress: textProgress, status: textStatus } = useTextTo3D()
 const { generateFromImage, isGenerating: imageGenerating, progress: imageProgress, status: imageStatus } = useImageTo3D()
 
 // 响应式数据
@@ -192,9 +192,23 @@ const loadHistoryData = async () => {
 
 const handleTextTo3D = async (prompt: string, options: any) => {
   try {
-    const result = await generateFromText(prompt, options)
+    // 构造符合 TextTo3DOptions 接口的参数
+    const textTo3DOptions = {
+      prompt: prompt,
+      negative_prompt: options.negative_prompt,
+      artStyle: options.art_style,
+      aiModel: options.ai_model,
+      topology: options.topology,
+      targetPolycount: options.target_polycount,
+      shouldRemesh: options.should_remesh,
+      isATPose: options.is_a_t_pose,
+      symmetryMode: 'auto',
+      enablePBR: false,
+    }
+    
+    const result = await generateFromText(textTo3DOptions)
     if (result) {
-      currentModel.value = result.modelUrl
+      currentModel.value = result.url
       showNotification('3D模型生成成功！', 'success')
       // 重新加载历史数据以获取最新的任务
       await loadHistoryData()

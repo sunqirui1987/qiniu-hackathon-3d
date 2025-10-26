@@ -62,7 +62,8 @@
           :is-processing="isGenerating"
           @update:text-prompt="$emit('update:textPrompt', $event)"
           @update:text-options="$emit('update:textOptions', $event)"
-          @generate-from-text="$emit('generate-from-text')"
+          @generate-from-text="(...args) => $emit('generate-from-text', ...args)"
+          @generation-completed="$emit('generation-completed')"
         />
 
         <!-- 图生3D面板 -->
@@ -74,6 +75,7 @@
           @update:selected-image="$emit('update:selectedImage', $event)"
           @update:image-options="$emit('update:imageOptions', $event)"
           @generate-from-image="$emit('generate-from-image')"
+          @generation-completed="$emit('generation-completed')"
         />
 
         <!-- 重拓扑面板 -->
@@ -85,6 +87,7 @@
           :is-processing="isProcessing"
           @update:retopology-options="$emit('update:retopologyOptions', $event)"
           @start-retopology="$emit('start-retopology')"
+          @processing-completed="$emit('processing-completed')"
         />
 
         <!-- 贴图面板 -->
@@ -94,6 +97,7 @@
           :is-processing="isProcessing"
           @update:texture-options="$emit('update:textureOptions', $event)"
           @generate-texture="$emit('generate-texture')"
+          @generation-completed="$emit('generation-completed')"
         />
       </div>
     </div>
@@ -192,7 +196,9 @@ const emit = defineEmits([
   'generate-from-text',
   'generate-from-image',
   'start-retopology',
-  'generate-texture'
+  'generate-texture',
+  'generation-completed',
+  'processing-completed'
 ])
 
 // 主菜单配置
