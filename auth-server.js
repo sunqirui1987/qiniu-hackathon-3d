@@ -74,10 +74,9 @@ app.use('/api/meshy', (req, res, next) => {
   next()
 }, meshyRouter)
 
-// 简化的OAuth路由 - 直接访问 /auth/provider
+// OAuth路由 - 重定向到真正的OAuth授权端点
 app.get('/auth/:provider', (req, res) => {
   const { provider } = req.params
-  const { redirect } = req.query // 获取redirect参数
   
   if (!['github', 'google'].includes(provider)) {
     return res.status(400).json({
@@ -86,14 +85,8 @@ app.get('/auth/:provider', (req, res) => {
     })
   }
   
-  // 构建重定向URL，包含redirect参数
-  let redirectUrl = `/api/auth/${provider}/mock`
-  if (redirect) {
-    redirectUrl += `?redirect=${encodeURIComponent(redirect)}`
-  }
-  
-  // 重定向到mock端点
-  res.redirect(redirectUrl)
+  // 重定向到真正的OAuth授权端点
+  res.redirect(`/api/auth/${provider}`)
 })
 
 // 处理 404 错误

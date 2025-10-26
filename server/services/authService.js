@@ -289,19 +289,33 @@ export class AuthService {
   }
 
   async loginWithOAuth(provider, code, state) {
+    console.log(`[Auth Debug] 开始 OAuth 登录流程`)
+    console.log(`[Auth Debug] Provider: ${provider}`)
+    console.log(`[Auth Debug] Code: ${code?.substring(0, 20)}...`)
+    console.log(`[Auth Debug] State: ${state}`)
+    
     const stateVerification = oauthService.verifyState(state, provider)
+    console.log(`[Auth Debug] State 验证结果:`, stateVerification)
+    
     if (!stateVerification.valid) {
+      console.error(`[Auth Debug] State 验证失败:`, stateVerification.error)
       throw new AppError(stateVerification.error, 400)
     }
     
+    console.log(`[Auth Debug] 开始交换 code 为 access token`)
     const accessToken = await oauthService.exchangeCodeForToken(provider, code)
+    console.log(`[Auth Debug] 获得 access token: ${accessToken?.substring(0, 20)}...`)
     
+    console.log(`[Auth Debug] 开始获取用户信息`)
     const oauthUser = await oauthService.getUserInfo(provider, accessToken)
+    console.log(`[Auth Debug] OAuth 用户信息:`, JSON.stringify(oauthUser, null, 2))
     
+    console.log(`[Auth Debug] 查找现有用户: provider=${oauthUser.provider}, providerId=${oauthUser.providerId}`)
     let user = await db.findUserByProvider(oauthUser.provider, oauthUser.providerId)
+    console.log(`[Auth Debug] 现有用户查找结果:`, user ? `找到用户 ID: ${user.id}` : '未找到用户')
     
     if (!user) {
-      user = await db.createUser({
+      console.log(`[Auth Debug] 创建新用户，数据:`, {
         email: oauthUser.email,
         name: oauthUser.name,
         avatar: oauthUser.avatar,
@@ -310,13 +324,41 @@ export class AuthService {
         oauthData: oauthUser.rawData
       })
       
+      try {
+        user = await db.createUser({
+          email: oauthUser.email,
+          name: oauthUser.name,
+          avatar: oauthUser.avatar,
+          provider: oauthUser.provider,
+          providerId: oauthUser.providerId,
+          oauthData: oauthUser.rawData
+        })
+        
+        console.log(`[Auth Debug] 新用户创建成功:`, {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          provider: user.provider
+        })
+      } catch (createError) {
+        console.error(`[Auth Debug] 创建用户失败:`, createError.message)
+        console.error(`[Auth Debug] Create Error Stack:`, createError.stack)
+        throw createError
+      }
+      
       console.log(`[Auth] New OAuth user created: ${user.email} (${provider})`)
     } else {
+      console.log(`[Auth Debug] 更新现有用户信息`)
       await db.updateUser(user.id, {
+        email: oauthUser.email,  // 更新邮箱为真实的GitHub邮箱
         name: oauthUser.name,
         avatar: oauthUser.avatar,
         lastLoginAt: new Date().toISOString()
       })
+      console.log(`[Auth Debug] 用户信息更新完成，邮箱已更新为: ${oauthUser.email}`)
+      
+      // 重新获取更新后的用户信息
+      user = await db.findUserById(user.id)
       
       console.log(`[Auth] OAuth user logged in: ${user.email} (${provider})`)
     }

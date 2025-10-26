@@ -17,6 +17,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/auth/github/callback',
+      name: 'github-callback',
+      component: () => import('../views/AuthCallback.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/',
       name: 'home',
       component: () => import('../views/Studio.vue'),

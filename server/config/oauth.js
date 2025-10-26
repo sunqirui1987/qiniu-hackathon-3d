@@ -36,10 +36,11 @@ export function getOAuthConfig(provider) {
     throw new Error(`不支持的 OAuth 提供商: ${provider}`)
   }
   
-  const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001'
+  // 使用前端地址作为 redirect_uri
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
   
   return {
     ...config,
-    redirectUri: `${apiBaseUrl}${config.callbackPath}`
+    redirectUri: `${frontendUrl}/auth/${provider}/callback`
   }
 }
