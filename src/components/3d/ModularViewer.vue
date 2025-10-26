@@ -304,6 +304,9 @@ const handleMaterialChange = (material: any) => {
 const handleLightingChange = (lighting: any) => {
   // 光照变更处理
   console.log('Lighting change:', lighting)
+  if (babylonViewer.value && babylonViewer.value.updateLighting) {
+    babylonViewer.value.updateLighting(lighting)
+  }
 }
 
 const handleFullscreen = () => {

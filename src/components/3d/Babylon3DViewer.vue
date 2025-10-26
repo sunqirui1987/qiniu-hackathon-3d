@@ -98,6 +98,7 @@ const {
   setZoom,
   rotateModel,
   updateTransform,
+  updateLighting,
   takeScreenshot,
   dispose
 } = use3DViewer({ canvasRef })
@@ -257,6 +258,10 @@ const updateTransformMethod = (transform: any) => {
   updateTransform(transform)
 }
 
+const updateLightingMethod = (lighting: any) => {
+  updateLighting(lighting)
+}
+
 // 暴露方法给父组件
 defineExpose({
   // ViewerToolbar控制方法
@@ -277,6 +282,7 @@ defineExpose({
   fitToScreen,
   takeScreenshot: takeScreenshotMethod,
   updateTransform: updateTransformMethod,
+  updateLighting: updateLightingMethod,
   
   // 直接暴露composable方法
   loadModel: loadModelFromUrl,

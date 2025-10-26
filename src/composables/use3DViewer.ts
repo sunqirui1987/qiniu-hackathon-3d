@@ -50,6 +50,12 @@ export interface Transform {
   scale: { x: number; y: number; z: number }
 }
 
+export interface Lighting {
+  ambientIntensity: number
+  directionalIntensity: number
+  shadows: boolean
+}
+
 export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | null> }) {
   const engine = ref<Engine | null>(null)
   const scene = ref<Scene | null>(null)
@@ -443,6 +449,25 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     currentModel.value.scaling.z = transform.scale.z
   }
 
+  const updateLighting = (lighting: Lighting) => {
+    if (!scene.value) return
+
+    // 更新环境光强度
+    if (light.value) {
+      light.value.intensity = lighting.ambientIntensity
+    }
+
+    // 更新主光源强度
+    if (directionalLight.value) {
+      directionalLight.value.intensity = lighting.directionalIntensity
+    }
+
+    // 更新阴影设置
+    if (shadowGenerator.value) {
+      shadowGenerator.value.getShadowMap()!.renderList = lighting.shadows && currentModel.value ? [currentModel.value] : []
+    }
+  }
+
   const takeScreenshot = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       if (!engine.value) {
@@ -570,6 +595,7 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     setZoom,
     rotateModel,
     updateTransform,
+    updateLighting,
     takeScreenshot,
     
     // 导出方法

@@ -22,54 +22,58 @@
           </div>
           
           <div class="flex items-center gap-1">
-            <button
-              @click="handleResetView"
-              class="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-              title="重置视图"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+            <Tooltip text="重置视图" position="right" :delay="100">
+              <button
+                @click="handleResetView"
+                class="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </Tooltip>
             
-            <button
-              @click="handleToggleWireframe"
-              :class="[
-                'p-1 rounded transition-colors',
-                showWireframe ? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
-              ]"
-              title="线框模式"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </button>
+            <Tooltip text="线框模式" position="right" :delay="100">
+              <button
+                @click="handleToggleWireframe"
+                :class="[
+                  'p-1 rounded transition-colors',
+                  showWireframe ? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+                ]"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </button>
+            </Tooltip>
             
-            <button
-              @click="handleToggleGrid"
-              :class="[
-                'p-1 rounded transition-colors',
-                showGrid ? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
-              ]"
-              title="显示网格"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-              </svg>
-            </button>
+            <Tooltip text="显示网格" position="right" :delay="100">
+              <button
+                @click="handleToggleGrid"
+                :class="[
+                  'p-1 rounded transition-colors',
+                  showGrid ? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+                ]"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                </svg>
+              </button>
+            </Tooltip>
             
-            <button
-              @click="handleToggleAxes"
-              :class="[
-                'p-1 rounded transition-colors',
-                showAxes ? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
-              ]"
-              title="显示坐标轴"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21l3-3-3-3m8 0l3 3-3 3M12 3v18m9-9H3" />
-              </svg>
-            </button>
+            <Tooltip text="显示坐标轴" position="right" :delay="100">
+              <button
+                @click="handleToggleAxes"
+                :class="[
+                  'p-1 rounded transition-colors',
+                  showAxes ? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+                ]"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21l3-3-3-3m8 0l3 3-3 3M12 3v18m9-9H3" />
+                </svg>
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -141,6 +145,7 @@
 import { ref, watch, computed } from 'vue'
 import ModularViewer from '@/components/3d/ModularViewer.vue'
 import PrintModal from '@/components/modals/PrintModal.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 import { meshyClient } from '@/utils/meshyClient'
 import type { SelectedItem } from '@/types/model'
 

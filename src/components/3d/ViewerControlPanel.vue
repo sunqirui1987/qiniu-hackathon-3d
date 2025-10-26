@@ -162,84 +162,7 @@
         </div>
       </div>
 
-      <!-- 材质设置 -->
-      <div class="space-y-3">
-        <h4 class="text-sm font-medium text-gray-300 flex items-center">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
-          </svg>
-          材质
-        </h4>
-        
-        <div class="space-y-3">
-          <!-- 颜色 -->
-          <div>
-            <label class="text-xs text-gray-400 font-medium mb-2 block">基础颜色</label>
-            <div class="flex items-center space-x-2">
-              <input
-                type="color"
-                v-model="material.color"
-                @input="updateMaterial"
-                class="w-8 h-8 rounded border border-gray-600 bg-gray-800"
-              >
-              <input
-                type="text"
-                v-model="material.color"
-                @input="updateMaterial"
-                class="flex-1 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm focus:border-blue-500 focus:outline-none"
-              >
-            </div>
-          </div>
 
-          <!-- 金属度 -->
-          <div>
-            <label class="text-xs text-gray-400 font-medium mb-2 block">
-              金属度: {{ material.metallic.toFixed(2) }}
-            </label>
-            <input
-              type="range"
-              v-model.number="material.metallic"
-              @input="updateMaterial"
-              min="0"
-              max="1"
-              step="0.01"
-              class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-            >
-          </div>
-
-          <!-- 粗糙度 -->
-          <div>
-            <label class="text-xs text-gray-400 font-medium mb-2 block">
-              粗糙度: {{ material.roughness.toFixed(2) }}
-            </label>
-            <input
-              type="range"
-              v-model.number="material.roughness"
-              @input="updateMaterial"
-              min="0"
-              max="1"
-              step="0.01"
-              class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-            >
-          </div>
-
-          <!-- 透明度 -->
-          <div>
-            <label class="text-xs text-gray-400 font-medium mb-2 block">
-              透明度: {{ material.opacity.toFixed(2) }}
-            </label>
-            <input
-              type="range"
-              v-model.number="material.opacity"
-              @input="updateMaterial"
-              min="0"
-              max="1"
-              step="0.01"
-              class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-            >
-          </div>
-        </div>
-      </div>
 
       <!-- 光照设置 -->
       <div class="space-y-3">
@@ -323,7 +246,6 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   close: []
   transformChange: [transform: any]
-  materialChange: [material: any]
   lightingChange: [lighting: any]
 }>()
 
@@ -334,12 +256,7 @@ const transform = reactive({
   scale: { x: 1, y: 1, z: 1 }
 })
 
-const material = reactive({
-  color: '#ffffff',
-  metallic: 0.0,
-  roughness: 0.5,
-  opacity: 1.0
-})
+
 
 const lighting = reactive({
   ambientIntensity: 0.3,
@@ -360,9 +277,7 @@ const updateTransform = () => {
   emit('transformChange', { ...transform })
 }
 
-const updateMaterial = () => {
-  emit('materialChange', { ...material })
-}
+
 
 const updateLighting = () => {
   emit('lightingChange', { ...lighting })
