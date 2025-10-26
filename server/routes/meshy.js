@@ -384,7 +384,9 @@ router.get('/tasks/all', async (req, res, next) => {
   }
 })
 
-router.all('/*', requireAuth, async (req, res, next) => {
+// 通用代理路由 - 处理所有其他请求
+router.use(requireAuth)
+router.use(async (req, res, next) => {
   console.log('[Meshy] Proxying request:', req.method, req.originalUrl)
   console.log('[Meshy] Request path:', req.path)
   console.log('[Meshy] Query params:', req.query)
