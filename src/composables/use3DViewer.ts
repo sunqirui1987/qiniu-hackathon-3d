@@ -90,7 +90,7 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
       })
 
       scene.value = new Scene(engine.value)
-      scene.value.clearColor = options.clearColor || new Color4(0.95, 0.95, 0.95, 1)
+      scene.value.clearColor = options.clearColor || new Color4(31/255, 41/255, 55/255, 1)
 
       // 创建相机
       camera.value = new ArcRotateCamera(
@@ -177,8 +177,10 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     if (!scene.value) return
 
     try {
-      axesViewer.value = new AxesViewer(scene.value, 2)
-      axesViewer.value.setEnabled(showAxes.value)
+      // 创建更小的坐标轴 (长度从2改为1)
+      if (showAxes.value) {
+        axesViewer.value = new AxesViewer(scene.value, 1)
+      }
       
       console.log('[3DViewer] Axes created successfully')
     } catch (error) {
@@ -378,8 +380,24 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     const newState = enabled !== undefined ? enabled : !showAxes.value
     showAxes.value = newState
     
+    if (!scene.value) return
+    
+    // 销毁现有的坐标轴
     if (axesViewer.value) {
-      axesViewer.value.setEnabled(newState)
+      axesViewer.value.dispose()
+      axesViewer.value = null
+    }
+    
+    // 如果需要显示，重新创建坐标轴
+    if (newState) {
+      try {
+        axesViewer.value = new AxesViewer(scene.value, 1)
+        console.log('[3DViewer] Axes toggled on')
+      } catch (error) {
+        console.error('[3DViewer] Failed to create axes:', error)
+      }
+    } else {
+      console.log('[3DViewer] Axes toggled off')
     }
   }
 
