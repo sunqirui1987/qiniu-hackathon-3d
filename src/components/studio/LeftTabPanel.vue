@@ -1,316 +1,100 @@
 <template>
-  <div class="left-tab-panel w-80 bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700 flex flex-col">
-    <!-- Tab标签栏 -->
-    <div class="tab-header flex border-b border-gray-300 dark:border-gray-700">
+  <div class="left-tab-panel w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex">
+    <!-- 左侧垂直主标签 -->
+    <div class="main-tabs w-16 bg-gray-100 dark:bg-gray-900 flex flex-col border-r border-gray-200 dark:border-gray-700">
       <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        @click="$emit('tab-change', tab.id)"
+        v-for="menu in mainMenus"
+        :key="menu.id"
+        @click="handleMainMenuClick(menu.id)"
         :class="[
-          'flex-1 py-3 px-4 text-sm font-medium transition-colors border-b-2',
-          activeTab === tab.id
-            ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-gray-200 dark:bg-gray-750'
-            : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-750'
+          'h-16 flex flex-col items-center justify-center text-xs font-medium transition-colors duration-200 relative',
+          activeMainMenu === menu.id
+            ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
         ]"
       >
-        <div class="flex items-center justify-center gap-2">
-          <component :is="tab.icon" class="w-4 h-4" />
-          <span>{{ tab.name }}</span>
-        </div>
+        <!-- 激活指示器 -->
+        <div 
+          v-if="activeMainMenu === menu.id"
+          class="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-600 dark:bg-blue-400"
+        ></div>
+        
+        <component :is="menu.icon" class="w-5 h-5 mb-1" />
+        <span class="text-center leading-tight">{{ menu.name }}</span>
       </button>
     </div>
 
-    <!-- Tab内容区域 -->
-    <div class="tab-content flex-1 overflow-y-auto">
-      <!-- 文生3D面板 -->
-      <div v-if="activeTab === 'text-to-3d'" class="p-6 space-y-6">
-        <div>
-          <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">文本生成3D模型</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">描述文本</label>
-              <textarea
-                :value="textPrompt"
-                @input="$emit('update:textPrompt', $event.target.value)"
-                placeholder="描述你想要生成的3D模型，例如：一只可爱的小猫咪..."
-                class="w-full h-32 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 focus:outline-none resize-none"
-              ></textarea>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">生成参数</label>
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">质量等级</label>
-                  <select 
-                    :value="textOptions.quality" 
-                    @change="$emit('update:textOptions', { ...textOptions, quality: $event.target.value })"
-                    class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="draft">草图 (快速)</option>
-                    <option value="standard">标准</option>
-                    <option value="high">高质量</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">风格</label>
-                  <select 
-                    :value="textOptions.style" 
-                    @change="$emit('update:textOptions', { ...textOptions, style: $event.target.value })"
-                    class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="realistic">写实</option>
-                    <option value="cartoon">卡通</option>
-                    <option value="abstract">抽象</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <button
-              @click="$emit('generate-from-text')"
-              :disabled="!textPrompt.trim() || isGenerating"
-              class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
-            >
-              {{ isGenerating ? '生成中...' : '开始生成' }}
-            </button>
-
-            <!-- 生成进度 -->
-            <div v-if="isGenerating && activeTab === 'text-to-3d'" class="space-y-3">
-              <div class="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2">
-                <div 
-                  class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  :style="{ width: `${generationProgress}%` }"
-                ></div>
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-400 text-center">{{ generationStatus }}</p>
-            </div>
+    <!-- 右侧内容区域 -->
+    <div class="content-wrapper flex-1 flex flex-col">
+      <!-- 子菜单（仅在模型菜单激活时显示） -->
+      <div v-if="activeMainMenu === 'model'" class="sub-menu flex bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+        <button
+          v-for="subMenu in subMenus"
+          :key="subMenu.id"
+          @click="$emit('tab-change', subMenu.id)"
+          :class="[
+            'flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 relative',
+            activeTab === subMenu.id
+              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800'
+              : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-gray-800'
+          ]"
+        >
+          <!-- 激活指示器 -->
+          <div 
+            v-if="activeTab === subMenu.id"
+            class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"
+          ></div>
+          
+          <div class="flex items-center justify-center gap-2">
+            <component :is="subMenu.icon" class="w-4 h-4" />
+            <span>{{ subMenu.name }}</span>
           </div>
-        </div>
+        </button>
       </div>
 
-      <!-- 图生3D面板 -->
-      <div v-if="activeTab === 'image-to-3d'" class="p-6 space-y-6">
-        <div>
-          <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">图片生成3D模型</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">上传图片</label>
-              <div class="border-2 border-dashed border-gray-400 dark:border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 dark:hover:border-gray-500 transition-colors">
-                <input
-                  type="file"
-                  ref="imageInput"
-                  @change="handleImageUpload"
-                  accept="image/*"
-                  class="hidden"
-                >
-                <div v-if="selectedImage" class="space-y-3">
-                  <img :src="selectedImage" alt="预览" class="max-w-full h-40 object-contain mx-auto rounded">
-                  <div class="flex gap-2 justify-center">
-                    <button
-                      @click="clearImage"
-                      class="px-3 py-1 text-red-400 hover:text-red-300 text-sm border border-red-400 rounded hover:bg-red-400/10 transition-colors"
-                    >
-                      清除图片
-                    </button>
-                    <button
-                      @click="$refs.imageInput?.click()"
-                      class="px-3 py-1 text-blue-400 hover:text-blue-300 text-sm border border-blue-400 rounded hover:bg-blue-400/10 transition-colors"
-                    >
-                      重新选择
-                    </button>
-                  </div>
-                </div>
-                <div v-else class="space-y-2">
-                  <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <button
-                    @click="$refs.imageInput?.click()"
-                    class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                  >
-                    点击上传图片
-                  </button>
-                  <p class="text-xs text-gray-500 dark:text-gray-500">支持 JPG、PNG、GIF 格式</p>
-                </div>
-              </div>
-            </div>
+      <!-- 内容区域 -->
+      <div class="content-area flex-1 overflow-y-auto bg-white dark:bg-gray-800">
+        <!-- 文生3D面板 -->
+        <TextTo3D
+          v-if="activeMainMenu === 'model' && activeTab === 'text-to-3d'"
+          :text-prompt="textPrompt"
+          :text-options="textOptions"
+          :is-processing="isGenerating"
+          @update:text-prompt="$emit('update:textPrompt', $event)"
+          @update:text-options="$emit('update:textOptions', $event)"
+          @generate-from-text="$emit('generate-from-text')"
+        />
 
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">生成参数</label>
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs text-gray-400 mb-1">模型复杂度</label>
-                  <select 
-                    :value="imageOptions.complexity" 
-                    @change="$emit('update:imageOptions', { ...imageOptions, complexity: $event.target.value })"
-                    class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
-                  >
-                    <option value="simple">简单</option>
-                    <option value="medium">中等</option>
-                    <option value="complex">复杂</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            
-            <button
-              @click="$emit('generate-from-image')"
-              :disabled="!selectedImage || isGenerating"
-              class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
-            >
-              {{ isGenerating ? '生成中...' : '开始生成' }}
-            </button>
+        <!-- 图生3D面板 -->
+        <ImageTo3D
+          v-if="activeMainMenu === 'model' && activeTab === 'image-to-3d'"
+          :selected-image="selectedImage"
+          :image-options="imageOptions"
+          :is-processing="isGenerating"
+          @update:selected-image="$emit('update:selectedImage', $event)"
+          @update:image-options="$emit('update:imageOptions', $event)"
+          @generate-from-image="$emit('generate-from-image')"
+        />
 
-            <!-- 生成进度 -->
-            <div v-if="isGenerating && activeTab === 'image-to-3d'" class="space-y-3">
-              <div class="w-full bg-gray-700 rounded-full h-2">
-                <div 
-                  class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  :style="{ width: `${generationProgress}%` }"
-                ></div>
-              </div>
-              <p class="text-sm text-gray-400 text-center">{{ generationStatus }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        <!-- 重拓扑面板 -->
+        <Retopology
+          v-if="activeMainMenu === 'retopology'"
+          :retopology-options="retopologyOptions"
+          :current-model="currentModel"
+          :model-info="modelInfo"
+          :is-processing="isProcessing"
+          @update:retopology-options="$emit('update:retopologyOptions', $event)"
+          @start-retopology="$emit('start-retopology')"
+        />
 
-      <!-- 拓模型面板 -->
-      <div v-if="activeTab === 'retopology'" class="p-6 space-y-6">
-        <div>
-          <h3 class="text-lg font-semibold mb-4 text-white">模型重拓扑</h3>
-          <div class="space-y-4">
-            <div class="bg-gray-750 rounded-lg p-4 border border-gray-600">
-              <div class="flex items-center gap-3 mb-3">
-                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="text-sm font-medium text-gray-300">当前模型信息</span>
-              </div>
-              <div v-if="currentModel" class="text-sm text-gray-400 space-y-1">
-                <p>面数: {{ modelInfo?.faces || 'N/A' }}</p>
-                <p>顶点数: {{ modelInfo?.vertices || 'N/A' }}</p>
-                <p>文件大小: {{ modelInfo?.fileSize || 'N/A' }}</p>
-              </div>
-              <div v-else class="text-sm text-gray-500">
-                请先加载一个3D模型
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">目标面数</label>
-              <input
-                :value="retopologyOptions.targetFaces"
-                @input="$emit('update:retopologyOptions', { ...retopologyOptions, targetFaces: parseInt($event.target.value) })"
-                type="number"
-                min="100"
-                max="50000"
-                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
-                placeholder="10000"
-              >
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">优化选项</label>
-              <div class="space-y-2">
-                <label class="flex items-center space-x-2 text-sm text-gray-300">
-                  <input 
-                    type="checkbox" 
-                    :checked="retopologyOptions.preserveUV" 
-                    @change="$emit('update:retopologyOptions', { ...retopologyOptions, preserveUV: $event.target.checked })"
-                    class="rounded"
-                  >
-                  <span>保持UV映射</span>
-                </label>
-                <label class="flex items-center space-x-2 text-sm text-gray-300">
-                  <input 
-                    type="checkbox" 
-                    :checked="retopologyOptions.preserveSharp" 
-                    @change="$emit('update:retopologyOptions', { ...retopologyOptions, preserveSharp: $event.target.checked })"
-                    class="rounded"
-                  >
-                  <span>保持锐利边缘</span>
-                </label>
-              </div>
-            </div>
-
-            <button
-              @click="$emit('start-retopology')"
-              :disabled="!currentModel || isProcessing"
-              class="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
-            >
-              {{ isProcessing ? '处理中...' : '开始重拓扑' }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 贴图面板 -->
-      <div v-if="activeTab === 'texture'" class="p-6 space-y-6">
-        <div>
-          <h3 class="text-lg font-semibold mb-4 text-white">AI贴图生成</h3>
-          <div class="space-y-4">
-            <div class="bg-gray-750 rounded-lg p-4 border border-gray-600">
-              <div class="flex items-center gap-3 mb-3">
-                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="text-sm font-medium text-gray-300">模型状态</span>
-              </div>
-              <div v-if="currentModel" class="text-sm text-gray-400">
-                <p>✓ 模型已加载，可以生成贴图</p>
-              </div>
-              <div v-else class="text-sm text-gray-500">
-                请先加载一个3D模型
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">贴图描述</label>
-              <textarea
-                :value="texturePrompt"
-                @input="$emit('update:texturePrompt', $event.target.value)"
-                placeholder="描述你想要的贴图效果，例如：木质纹理、金属表面、彩色涂装..."
-                class="w-full h-24 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none resize-none"
-              ></textarea>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">贴图类型</label>
-              <select 
-                :value="textureOptions.type" 
-                @change="$emit('update:textureOptions', { ...textureOptions, type: $event.target.value })"
-                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
-              >
-                <option value="diffuse">漫反射贴图</option>
-                <option value="pbr">PBR材质包</option>
-                <option value="stylized">风格化贴图</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">分辨率</label>
-              <select 
-                :value="textureOptions.resolution" 
-                @change="$emit('update:textureOptions', { ...textureOptions, resolution: $event.target.value })"
-                class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
-              >
-                <option value="512">512x512</option>
-                <option value="1024">1024x1024</option>
-                <option value="2048">2048x2048</option>
-              </select>
-            </div>
-
-            <button
-              @click="$emit('generate-texture')"
-              :disabled="!currentModel || !texturePrompt.trim() || isProcessing"
-              class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
-            >
-              {{ isProcessing ? '生成中...' : '生成贴图' }}
-            </button>
-          </div>
-        </div>
+        <!-- 贴图面板 -->
+        <Texture
+          v-if="activeMainMenu === 'texture'"
+          :texture-options="textureOptions"
+          :is-processing="isProcessing"
+          @update:texture-options="$emit('update:textureOptions', $event)"
+          @generate-texture="$emit('generate-texture')"
+        />
       </div>
     </div>
   </div>
@@ -318,8 +102,51 @@
 
 <script setup lang="ts">
 import { ref, h } from 'vue'
+import TextTo3D from './TextTo3D.vue'
+import ImageTo3D from './ImageTo3D.vue'
+import Retopology from './Retopology.vue'
+import Texture from './Texture.vue'
 
-// 图标组件
+// 主菜单图标组件
+const ModelIcon = () => h('svg', { 
+  xmlns: 'http://www.w3.org/2000/svg',
+  width: '24', 
+  height: '24', 
+  viewBox: '0 0 24 24', 
+  fill: 'none', 
+  stroke: 'currentColor', 
+  'stroke-width': '1.5', 
+  'stroke-linecap': 'round', 
+  'stroke-linejoin': 'round', 
+  class: 'tabler-icon tabler-icon-cube size-5' 
+}, [
+  h('path', { d: 'M21 16.008v-8.018a1.98 1.98 0 0 0 -1 -1.717l-7 -4.008a2.016 2.016 0 0 0 -2 0l-7 4.008c-.619 .355 -1 1.01 -1 1.718v8.018c0 .709 .381 1.363 1 1.717l7 4.008a2.016 2.016 0 0 0 2 0l7 -4.008c.619 -.355 1 -1.01 1 -1.718z' }),
+  h('path', { d: 'M12 22v-10' }),
+  h('path', { d: 'M12 12l8.73 -5.04' }),
+  h('path', { d: 'M3.27 6.96l8.73 5.04' })
+])
+
+const RetopologyIcon = () => h('svg', { 
+  width: '24', 
+  height: '24', 
+  viewBox: '0 0 24 24', 
+  fill: 'none', 
+  xmlns: 'http://www.w3.org/2000/svg',
+  class: 'size-5' 
+}, [
+  h('path', { 
+    'fill-rule': 'evenodd', 
+    'clip-rule': 'evenodd', 
+    d: 'M13.848 12.66a1 1 0 0 1 .005-1.73l6.683-3.858c.761-.44.756-1.548-.01-1.995L13.308.862a2 2 0 0 0-2.009-.004L3.423 5.405a2 2 0 0 0-1 1.742l.045 9.211a2 2 0 0 0 .992 1.718l7.955 4.644a2 2 0 0 0 2.008.005l7.17-4.139c.76-.44.755-1.547-.01-1.994l-6.735-3.932Zm-2.243-2.179-.04-8.045-6.908 3.989 6.948 4.056Zm-7.68-2.746.04 8.038 6.896-3.982v-.007l-6.935-4.05Zm.79 9.337 6.942 4.053-.04-8.03-.006-.005-6.896 3.982Zm8.407-3.1.035 7.175 6.16-3.557-6.195-3.617Zm-.056-11.514.034 7.174 6.161-3.556-6.195-3.618Z', 
+    fill: 'currentColor' 
+  })
+])
+
+const TextureIcon = () => h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z' })
+])
+
+// 子菜单图标组件
 const TextIcon = () => h('svg', { class: 'w-4 h-4', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' })
 ])
@@ -328,17 +155,10 @@ const ImageIcon = () => h('svg', { class: 'w-4 h-4', fill: 'none', stroke: 'curr
   h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' })
 ])
 
-const RetopologyIcon = () => h('svg', { class: 'w-4 h-4', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
-  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z' })
-])
-
-const TextureIcon = () => h('svg', { class: 'w-4 h-4', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
-  h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z' })
-])
-
 // Props
 interface Props {
   activeTab: string
+  activeMainMenu?: string
   textPrompt: string
   selectedImage: string
   texturePrompt: string
@@ -354,11 +174,14 @@ interface Props {
   generationStatus: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  activeMainMenu: 'model'
+})
 
 // Emits
 const emit = defineEmits([
   'tab-change',
+  'main-menu-change',
   'update:textPrompt',
   'update:selectedImage',
   'update:texturePrompt',
@@ -372,33 +195,25 @@ const emit = defineEmits([
   'generate-texture'
 ])
 
-// Tab配置
-const tabs = [
-  { id: 'text-to-3d', name: '文生3D', icon: TextIcon },
-  { id: 'image-to-3d', name: '图生3D', icon: ImageIcon },
-  { id: 'retopology', name: '拓模型', icon: RetopologyIcon },
+// 主菜单配置
+const mainMenus = [
+  { id: 'model', name: '模型', icon: ModelIcon },
+  { id: 'retopology', name: '重拓扑', icon: RetopologyIcon },
   { id: 'texture', name: '贴图', icon: TextureIcon },
 ]
 
-// Refs
-const imageInput = ref()
+// 子菜单配置（模型菜单下的子选项）
+const subMenus = [
+  { id: 'text-to-3d', name: '文生3D', icon: TextIcon },
+  { id: 'image-to-3d', name: '图生3D', icon: ImageIcon },
+]
 
 // 方法
-const handleImageUpload = (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      emit('update:selectedImage', e.target?.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const clearImage = () => {
-  emit('update:selectedImage', '')
-  if (imageInput.value) {
-    imageInput.value.value = ''
+const handleMainMenuClick = (menuId: string) => {
+  emit('main-menu-change', menuId)
+  // 如果点击模型菜单，默认选择文生3D
+  if (menuId === 'model') {
+    emit('tab-change', 'text-to-3d')
   }
 }
 </script>
@@ -408,12 +223,22 @@ const clearImage = () => {
   background-color: rgb(55, 65, 81);
 }
 
-/* Tab样式 */
-.tab-header button {
+/* 主菜单样式 */
+.main-menu button {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.main-menu button:hover {
+  transform: translateX(2px);
+}
+
+/* 子菜单样式 */
+.sub-menu button {
   position: relative;
 }
 
-.tab-header button::after {
+.sub-menu button::after {
   content: '';
   position: absolute;
   bottom: -2px;
@@ -425,7 +250,7 @@ const clearImage = () => {
   transition: transform 0.2s ease;
 }
 
-.tab-header button.active::after {
+.sub-menu button.active::after {
   transform: scaleX(1);
 }
 
