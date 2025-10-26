@@ -151,15 +151,15 @@
         <!-- 生成按钮 -->
         <button
           type="submit"
-          :disabled="!selectedImage || props.isGenerating"
+          :disabled="!selectedImage || props.isGenerating || isSubmitting"
           class="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
         >
-          <span v-if="props.isGenerating" class="flex items-center justify-center gap-2">
+          <span v-if="props.isGenerating || isSubmitting" class="flex items-center justify-center gap-2">
             <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            生成中...
+            {{ isSubmitting ? '提交中...' : '生成中...' }}
           </span>
           <span v-else class="flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,9 +223,31 @@ const imageOptions = reactive({ ...props.imageOptions })
 const imageInput = ref<HTMLInputElement>()
 const selectedFile = ref<File | null>(null)
 const showAdvancedOptions = ref(false)
+const isSubmitting = ref(false)
+const lastSubmitTime = ref(0)
 
 // Methods
 const handleSubmit = () => {
+  // 防止频繁点击 - 2秒内只能提交一次
+  const now = Date.now()
+  if (now - lastSubmitTime.value < 2000) {
+    return
+  }
+  
+  // 检查是否已经在生成中
+  if (props.isGenerating || isSubmitting.value) {
+    return
+  }
+  
+  // 设置提交状态
+  isSubmitting.value = true
+  lastSubmitTime.value = now
+  
+  // 延迟重置提交状态，给用户视觉反馈
+  setTimeout(() => {
+    isSubmitting.value = false
+  }, 1000)
+  
   emit('update:selectedImage', selectedImage.value)
   emit('update:imageOptions', imageOptions)
   emit('generate-from-image', selectedFile.value)
@@ -285,4 +307,11 @@ watch(() => props.selectedImage, (newVal) => {
 watch(() => props.imageOptions, (newVal) => {
   Object.assign(imageOptions, newVal)
 }, { deep: true })
+
+watch(() => props.isGenerating, (newVal) => {
+  // 当外部isGenerating状态变化时，重置本地提交状态
+  if (newVal) {
+    isSubmitting.value = false
+  }
+})
 </script>

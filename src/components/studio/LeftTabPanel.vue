@@ -71,7 +71,7 @@
           v-if="activeMainMenu === 'model' && activeTab === 'image-to-3d'"
           :selected-image="selectedImage"
           :image-options="imageOptions"
-          :is-processing="isGenerating"
+          :is-generating="isGenerating"
           @update:selected-image="$emit('update:selectedImage', $event)"
           @update:image-options="$emit('update:imageOptions', $event)"
           @generate-from-image="$emit('generate-from-image', $event)"
