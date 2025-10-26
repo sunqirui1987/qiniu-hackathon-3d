@@ -87,7 +87,7 @@ import LeftTabPanel from '@/components/studio/LeftTabPanel.vue'
 import CenterViewer from '@/components/studio/CenterViewer.vue'
 import RightHistoryPanel from '@/components/studio/RightHistoryPanel.vue'
 import { useTextTo3D } from '@/composables/useTextTo3D'
-import type { SelectedItem } from '@/types/model'
+import type { SelectedItem, RetopologyOptions, RemeshOptions } from '@/types/model'
 import { useImageTo3D } from '@/composables/useImageTo3D'
 import { meshyClient } from '@/utils/meshyClient'
 
@@ -131,7 +131,7 @@ const imageOptions = reactive({
 })
 
 // 重拓扑相关
-const retopologyOptions = reactive({
+const retopologyOptions = reactive<RetopologyOptions>({
   input_source: 'existing_task',
   task_id: '',
   model_url: '',
@@ -302,27 +302,44 @@ const handleImageTo3D = async (file: File | null) => {
   }
 }
 
-const handleRetopology = async (options: any) => {
-  if (!selectedItem.value?.url && !options.task_id && !options.model_url) {
+const handleRetopology = async (options: RetopologyOptions) => {
+  // 验证输入参数
+  if (!options) {
+    showNotification('重拓扑参数无效', 'error')
+    return
+  }
+
+  // 检查是否有有效的输入源
+  const hasTaskId = options.task_id && options.task_id.trim() !== ''
+  const hasModelUrl = options.model_url && options.model_url.trim() !== ''
+  const hasSelectedItem = selectedItem.value?.id
+
+  if (!hasTaskId && !hasModelUrl && !hasSelectedItem) {
     showNotification('请先选择一个模型或任务', 'error')
     return
   }
   
   isProcessing.value = true
   try {
-    // 构造重拓扑参数
-    const remeshOptions = {
-      input_task_id: options.task_id || undefined,
-      model_url: options.model_url || undefined,
+    // 构造重拓扑参数，符合 RemeshOptions 接口
+    const remeshOptions: RemeshOptions = {
+      // 优先使用 task_id，其次使用 selectedItem.id，最后使用 model_url
+      input_task_id: hasTaskId ? options.task_id : (hasSelectedItem ? selectedItem.value!.id : undefined),
+      model_url: hasModelUrl ? options.model_url : undefined,
       target_formats: ['glb', 'obj'],
       topology: options.topology || 'triangle',
       target_polycount: options.target_polycount || 30000,
-      resize_height: options.resize_height || undefined,
+      resize_height: options.resize_height,
       origin_at: options.origin_at || 'bottom',
       convert_format_only: options.convert_format_only || false
     }
 
     console.log('开始重拓扑处理:', remeshOptions)
+    
+    // 验证必需参数
+    if (!remeshOptions.input_task_id && !remeshOptions.model_url) {
+      throw new Error('必须提供 input_task_id 或 model_url 中的一个')
+    }
     
     // 创建重拓扑任务
     const taskResponse = await meshyClient.createRemesh(remeshOptions)
@@ -339,7 +356,6 @@ const handleRetopology = async (options: any) => {
         pollInterval: 5000,
         onProgress: (progress, status) => {
           console.log(`重拓扑进度: ${progress}%`, status)
-          showNotification(`重拓扑进度: ${progress}%`, 'success')
         }
       }
     )
@@ -355,9 +371,9 @@ const handleRetopology = async (options: any) => {
     // 刷新历史数据
     await loadHistoryData()
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Retopology failed:', error)
-    showNotification(`重拓扑失败: ${error.message}`, 'error')
+    showNotification(`重拓扑失败: ${error?.message || '未知错误'}`, 'error')
   } finally {
     isProcessing.value = false
   }

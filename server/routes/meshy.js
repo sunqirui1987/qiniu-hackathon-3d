@@ -291,7 +291,7 @@ router.get('/tasks/all', async (req, res, next) => {
   console.log('[Meshy] Getting all tasks list')
   
   try {
-    const { page_size = 10 } = req.query
+    const { page_size = 100 } = req.query
     const pageSize = Math.floor(parseInt(page_size) / 4) || 3 // 平均分配给四种任务类型
     
     console.log('[Meshy] Requesting all task types with page_size:', pageSize)
