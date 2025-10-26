@@ -66,54 +66,43 @@
           </select>
         </div>
 
-        <!-- 纹理选项 -->
+        <!-- 纹理提示词 -->
         <div class="form-group">
-          <label class="flex items-center gap-3 mb-4">
-            <input
-              type="checkbox"
-              v-model="imageOptions.should_texture"
-              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">生成纹理</span>
-          </label>
-          
-          <div v-if="imageOptions.should_texture" class="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <label class="flex items-center gap-3">
-              <input
-                type="checkbox"
-                v-model="imageOptions.enable_pbr"
-                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span class="text-sm text-gray-700 dark:text-gray-300">生成PBR贴图</span>
-            </label>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">纹理提示词</label>
-              <textarea
-                v-model="imageOptions.texture_prompt"
-                placeholder="描述你想要的纹理风格"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
-                rows="2"
-                maxlength="600"
-              ></textarea>
-            </div>
-          </div>
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">纹理提示词</label>
+          <textarea
+            v-model="imageOptions.texture_prompt"
+            placeholder="描述你想要的纹理风格（可选）"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+            rows="2"
+            maxlength="600"
+          ></textarea>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            已自动启用纹理生成、PBR贴图和重网格化
+          </p>
         </div>
 
         <!-- 高级选项 -->
         <div class="form-group">
           <button
             type="button"
-            @click="showImageAdvancedOptions = !showImageAdvancedOptions"
-            class="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            @click="showAdvancedOptions = !showAdvancedOptions"
+            class="flex items-center justify-between w-full text-left text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
-            <svg :class="['w-4 h-4 transition-transform', showImageAdvancedOptions ? 'rotate-90' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            <span>高级选项</span>
+            <svg
+              :class="['w-4 h-4 transition-transform duration-200', showAdvancedOptions ? 'rotate-180' : '']"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
-            高级选项
           </button>
           
-          <div v-if="showImageAdvancedOptions" class="mt-4 space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <div
+            v-show="showAdvancedOptions"
+            class="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg transition-all duration-200"
+          >
             <!-- 拓扑类型 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">拓扑类型</label>
@@ -129,7 +118,7 @@
             <!-- 目标多边形数量 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                目标多边形数量: {{ imageOptions.target_polycount.toLocaleString() }}
+                目标多边形数量: {{ imageOptions.target_polycount?.toLocaleString() || '30,000' }}
               </label>
               <input
                 type="range"
@@ -147,15 +136,6 @@
 
             <!-- 其他选项 -->
             <div class="space-y-3">
-              <label class="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  v-model="imageOptions.should_remesh"
-                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <span class="text-sm text-gray-700 dark:text-gray-300">启用重网格化</span>
-              </label>
-              
               <label class="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -215,13 +195,13 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   selectedImage: '',
   imageOptions: () => ({
-    ai_model: 'meshy-5',
-    should_texture: false,
-    enable_pbr: false,
+    ai_model: 'latest',
+    should_texture: true,
+    enable_pbr: true,
     texture_prompt: '',
     topology: 'triangle',
     target_polycount: 30000,
-    should_remesh: false,
+    should_remesh: true,
     is_a_t_pose: false
   }),
   isGenerating: false
@@ -231,7 +211,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'update:selectedImage': [value: string]
   'update:imageOptions': [value: any]
-  'generate-from-image': []
+  'generate-from-image': [file: File | null]
   'image-upload': [file: File]
   'clear-image': []
   'generation-completed': []
@@ -240,20 +220,22 @@ const emit = defineEmits<{
 // Local state
 const selectedImage = ref(props.selectedImage)
 const imageOptions = reactive({ ...props.imageOptions })
-const showImageAdvancedOptions = ref(false)
 const imageInput = ref<HTMLInputElement>()
+const selectedFile = ref<File | null>(null)
+const showAdvancedOptions = ref(false)
 
 // Methods
 const handleSubmit = () => {
   emit('update:selectedImage', selectedImage.value)
   emit('update:imageOptions', imageOptions)
-  emit('generate-from-image')
+  emit('generate-from-image', selectedFile.value)
 }
 
 const handleImageUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
+    selectedFile.value = file
     const reader = new FileReader()
     reader.onload = (e) => {
       selectedImage.value = e.target?.result as string
@@ -266,6 +248,7 @@ const handleImageUpload = (event: Event) => {
 
 const clearImage = () => {
   selectedImage.value = ''
+  selectedFile.value = null
   if (imageInput.value) {
     imageInput.value.value = ''
   }
@@ -274,7 +257,26 @@ const clearImage = () => {
 }
 
 // Watch for prop changes
-import { watch } from 'vue'
+import { watch, onMounted } from 'vue'
+
+// 确保默认值在组件挂载时正确应用
+onMounted(() => {
+  // 确保默认选择正确应用
+  if (!imageOptions.ai_model) {
+    imageOptions.ai_model = 'latest'
+  }
+  if (!imageOptions.topology) {
+    imageOptions.topology = 'triangle'
+  }
+  
+  // 固定纹理相关选项为true
+  imageOptions.should_texture = true
+  imageOptions.enable_pbr = true
+  imageOptions.should_remesh = true
+  
+  // 触发更新事件，确保父组件知道默认值
+  emit('update:imageOptions', imageOptions)
+})
 
 watch(() => props.selectedImage, (newVal) => {
   selectedImage.value = newVal

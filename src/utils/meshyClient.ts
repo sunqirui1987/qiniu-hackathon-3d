@@ -187,7 +187,7 @@ export class MeshyClient {
     if (options.texture_image_url) requestBody.texture_image_url = options.texture_image_url
     if (options.moderation !== undefined) requestBody.moderation = options.moderation
 
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/image-to-3d', requestBody)
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/image-to-3d', requestBody)
     return response.data
   }
 

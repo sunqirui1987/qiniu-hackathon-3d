@@ -15,6 +15,7 @@
       :is-processing="isProcessing"
       :generation-progress="generationProgress"
       :generation-status="generationStatus"
+      :selected-image="selectedImage"
       @tab-change="activeTab = $event"
       @update:text-prompt="textPrompt = $event"
       @update:text-options="textOptions = $event"
@@ -22,6 +23,7 @@
       @update:retopology-options="retopologyOptions = $event"
       @update:texture-options="textureOptions = $event"
       @update:texture-prompt="texturePrompt = $event"
+      @update:selected-image="selectedImage = $event"
       @generate-from-text="handleTextTo3D"
       @generate-from-image="handleImageTo3D"
       @start-retopology="handleRetopology"
@@ -110,8 +112,16 @@ const textOptions = reactive({
 })
 
 // 图片生成相关
+const selectedImage = ref('')
 const imageOptions = reactive({
-  complexity: 'medium'
+  ai_model: 'latest',
+  should_texture: true,
+  enable_pbr: true,
+  texture_prompt: '',
+  topology: 'triangle',
+  target_polycount: 30000,
+  should_remesh: true,
+  is_a_t_pose: false
 })
 
 // 重拓扑相关
@@ -220,9 +230,27 @@ const handleTextTo3D = async (prompt: string, options: any) => {
   }
 }
 
-const handleImageTo3D = async (image: File, options: any) => {
+const handleImageTo3D = async (file: File | null) => {
   try {
-    const result = await generateFromImage(image, options)
+    if (!file) {
+      showNotification('请先上传图片', 'error')
+      return
+    }
+
+    // 构造符合ImageTo3DOptions接口的options对象
+    const options = {
+      image: file, // 使用原始File对象
+      aiModel: imageOptions.ai_model || 'latest',
+      topology: imageOptions.topology || 'triangle',
+      targetPolycount: imageOptions.target_polycount || 30000,
+      shouldRemesh: imageOptions.should_remesh !== undefined ? imageOptions.should_remesh : true,
+      shouldTexture: imageOptions.should_texture !== undefined ? imageOptions.should_texture : true,
+      enablePBR: imageOptions.enable_pbr !== undefined ? imageOptions.enable_pbr : true,
+      isATPose: imageOptions.is_a_t_pose || false,
+      texturePrompt: imageOptions.texture_prompt || ''
+    }
+
+    const result = await generateFromImage(options)
     if (result) {
       currentModel.value = result.modelUrl
       showNotification('3D模型生成成功！', 'success')

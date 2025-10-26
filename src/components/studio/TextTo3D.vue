@@ -95,9 +95,26 @@
 
         <!-- 高级选项 -->
         <div class="form-group">
-          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">高级选项</h4>
+          <button
+            type="button"
+            @click="showAdvancedOptions = !showAdvancedOptions"
+            class="flex items-center justify-between w-full text-left text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <span>高级选项</span>
+            <svg
+              :class="['w-4 h-4 transition-transform duration-200', showAdvancedOptions ? 'rotate-180' : '']"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           
-          <div class="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <div
+            v-show="showAdvancedOptions"
+            class="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg transition-all duration-200"
+          >
             <!-- 拓扑类型 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">拓扑类型</label>
@@ -233,7 +250,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 
 // 模板接口定义
 interface Template {
@@ -293,6 +310,7 @@ const textPrompt = ref(props.textPrompt)
 const textOptions = reactive({ ...props.textOptions })
 const showTemplateModal = ref(false)
 const isLoading = ref(false)
+const showAdvancedOptions = ref(false)
 
 // Methods
 const handleSubmit = () => {
@@ -315,7 +333,6 @@ const selectTemplate = (template: Template) => {
 }
 
 // Watch for prop changes
-import { watch, onMounted } from 'vue'
 
 // 确保默认值在组件挂载时正确应用
 onMounted(() => {

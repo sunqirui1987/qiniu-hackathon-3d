@@ -74,7 +74,7 @@
           :is-processing="isGenerating"
           @update:selected-image="$emit('update:selectedImage', $event)"
           @update:image-options="$emit('update:imageOptions', $event)"
-          @generate-from-image="$emit('generate-from-image')"
+          @generate-from-image="$emit('generate-from-image', $event)"
           @generation-completed="$emit('generation-completed')"
         />
 
