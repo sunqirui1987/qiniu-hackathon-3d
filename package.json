@@ -26,6 +26,7 @@
   "dependencies": {
     "@babylonjs/core": "^6.0.0",
     "@babylonjs/loaders": "^6.0.0",
+    "@babylonjs/materials": "^6.49.0",
     "@babylonjs/serializers": "^6.49.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",

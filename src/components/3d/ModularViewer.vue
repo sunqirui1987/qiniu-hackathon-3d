@@ -6,73 +6,31 @@
       <Babylon3DViewer
         ref="babylonViewer"
         :model-url="modelUrl"
-        :show-wireframe="displayOptions.wireframe"
-        :show-grid="displayOptions.grid"
-        :show-axes="displayOptions.axes"
-        :current-view="currentView"
+        :auto-load="autoLoad"
+        :show-wireframe="showWireframe"
+        :show-grid="showGrid"
+        :show-axes="showAxes"
+        :current-view="viewMode"
         :active-tool="currentTool"
         @model-loaded="handleModelLoaded"
         @error="handleError"
         @view-change="handleViewChange"
         @tool-change="handleToolChange"
-        @wireframe-toggle="(value) => handleDisplayToggle('wireframe', value)"
-        @grid-toggle="(value) => handleDisplayToggle('grid', value)"
-        @axes-toggle="(value) => handleDisplayToggle('axes', value)"
-        @reset-view="() => handleToolbarAction('reset')"
-        @fit-to-screen="() => handleToolbarAction('fit')"
-        @screenshot="() => handleToolbarAction('screenshot')"
+        @wireframe-toggle="handleWireframeToggle"
+        @grid-toggle="handleGridToggle"
+        @axes-toggle="handleAxesToggle"
+        @reset-view="handleResetView"
+        @fit-to-screen="handleFitToScreen"
+        @screenshot="handleScreenshot"
         class="w-full h-full"
       />
 
-      <!-- 加载状态 -->
-      <div
-        v-if="isLoading"
-        :class="['absolute inset-0 backdrop-blur-sm flex items-center justify-center z-10', isDarkMode ? 'bg-gray-900/80' : 'bg-gray-100/80']"
-      >
-        <div class="text-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p :class="['text-lg', isDarkMode ? 'text-white' : 'text-gray-900']">加载模型中...</p>
-          <p :class="['text-sm mt-2', isDarkMode ? 'text-gray-400' : 'text-gray-600']">{{ loadingProgress }}%</p>
-        </div>
-      </div>
-
-      <!-- 错误状态 -->
-      <div
-        v-if="error"
-        :class="['absolute inset-0 backdrop-blur-sm flex items-center justify-center z-10', isDarkMode ? 'bg-gray-900/90' : 'bg-gray-100/90']"
-      >
-        <div class="text-center max-w-md">
-          <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-          <h3 :class="['text-xl font-semibold mb-2', isDarkMode ? 'text-white' : 'text-gray-900']">加载失败</h3>
-          <p :class="['mb-4', isDarkMode ? 'text-gray-400' : 'text-gray-600']">{{ error }}</p>
-          <button
-            @click="retryLoad"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            重试
-          </button>
-        </div>
-      </div>
-
-      <!-- 顶部工具栏 -->
-      <ViewerToolbar
-        v-if="!isLoading && !error"
-        :display-options="displayOptions"
-        :current-view="currentView"
-        @view-change="handleViewChange"
-        @tool-change="handleToolChange"
-        @display-toggle="handleDisplayToggle"
-        @action="handleToolbarAction"
-        class="absolute top-4 left-4 z-20"
-      />
 
       <!-- 右侧控制面板 -->
       <Transition name="slide-left">
         <ViewerControlPanel
-          v-if="showControlPanel && !isLoading && !error"
-          :model-info="modelInfo"
+          v-if="showControlPanel && !babylonViewer?.isLoading && !babylonViewer?.loadError"
+          :model-info="babylonViewer?.modelInfo || {}"
           @close="showControlPanel = false"
           @transform-change="handleTransformChange"
           @material-change="handleMaterialChange"
@@ -83,7 +41,7 @@
 
       <!-- 底部状态栏 -->
       <div
-        v-if="!isLoading && !error"
+        v-if="!babylonViewer?.isLoading && !babylonViewer?.loadError && babylonViewer?.modelInfo"
         class="absolute bottom-4 left-4 right-4 z-20"
       >
         <div :class="['backdrop-blur-sm border rounded-lg px-4 py-2', isDarkMode ? 'bg-gray-900/90 border-gray-700/50' : 'bg-white/90 border-gray-300/50']">
@@ -91,8 +49,8 @@
             <div :class="['flex items-center space-x-4', isDarkMode ? 'text-gray-300' : 'text-gray-700']">
               <span>视图: {{ viewModeText }}</span>
               <span>工具: {{ currentToolText }}</span>
-              <span v-if="modelInfo.vertices">顶点: {{ modelInfo.vertices.toLocaleString() }}</span>
-              <span v-if="modelInfo.faces">面: {{ modelInfo.faces.toLocaleString() }}</span>
+              <span v-if="babylonViewer?.modelInfo?.vertices">顶点: {{ babylonViewer.modelInfo.vertices.toLocaleString() }}</span>
+              <span v-if="babylonViewer?.modelInfo?.faces">面: {{ babylonViewer.modelInfo.faces.toLocaleString() }}</span>
             </div>
             <div class="flex items-center space-x-2">
               <button
@@ -180,9 +138,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Babylon3DViewer from './Babylon3DViewer.vue'
-import ViewerToolbar from './ViewerToolbar.vue'
 import ViewerControlPanel from './ViewerControlPanel.vue'
 
 // Props
@@ -196,7 +153,6 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelUrl: '',
   autoLoad: true,
   showWireframe: false,
   showGrid: true,
@@ -216,43 +172,17 @@ const emit = defineEmits<{
 const babylonViewer = ref()
 
 // State
-const isLoading = ref(false)
-const loadingProgress = ref(0)
-const error = ref('')
 const showControlPanel = ref(false)
 const showShortcuts = ref(false)
-const currentView = ref('perspective')
+const currentView = ref(props.viewMode)
 const currentTool = ref('rotate')
 
-const displayOptions = reactive({
-  wireframe: props.showWireframe,
-  grid: props.showGrid,
-  axes: props.showAxes
-})
-
-const modelInfo = reactive({
-  vertices: 0,
-  faces: 0,
-  fileSize: 0,
-  name: ''
-})
-
-// Watch props changes
-watch(() => props.showWireframe, (newValue) => {
-  displayOptions.wireframe = newValue
-})
-
-watch(() => props.showGrid, (newValue) => {
-  displayOptions.grid = newValue
-})
-
-watch(() => props.showAxes, (newValue) => {
-  displayOptions.axes = newValue
-})
-
-watch(() => props.viewMode, (newValue) => {
-  currentView.value = newValue
-})
+// 显示选项状态
+const displayOptions = computed(() => ({
+  wireframe: babylonViewer.value?.showWireframe || props.showWireframe,
+  grid: babylonViewer.value?.showGrid || props.showGrid,
+  axes: babylonViewer.value?.showAxes || props.showAxes
+}))
 
 // Computed
 const isDarkMode = computed(() => {
@@ -266,6 +196,7 @@ const viewerBackgroundClass = computed(() => {
 const viewModeText = computed(() => {
   const viewModes: Record<string, string> = {
     perspective: '透视',
+    orthographic: '正交',
     top: '顶视图',
     front: '前视图',
     side: '侧视图'
@@ -283,50 +214,54 @@ const currentToolText = computed(() => {
   return tools[currentTool.value] || '旋转'
 })
 
-// Methods
+// Event handlers
 const handleModelLoaded = (info: any) => {
-  isLoading.value = false
-  error.value = ''
-  Object.assign(modelInfo, info)
   emit('modelLoaded', info)
 }
 
 const handleError = (errorMessage: string) => {
-  isLoading.value = false
-  error.value = errorMessage
   emit('error', errorMessage)
-}
-
-const retryLoad = () => {
-  error.value = ''
-  isLoading.value = true
-  // 重新加载模型
-  if (babylonViewer.value && props.modelUrl) {
-    babylonViewer.value.loadModel(props.modelUrl)
-  }
 }
 
 const handleViewChange = (view: string) => {
   currentView.value = view
   emit('viewChange', view)
-  // 调用 Babylon 查看器的视图切换方法
-  if (babylonViewer.value) {
-    babylonViewer.value.setView(view)
-  }
 }
 
 const handleToolChange = (tool: string) => {
   currentTool.value = tool
   emit('toolChange', tool)
-  // 调用 Babylon 查看器的工具切换方法
-  if (babylonViewer.value) {
-    babylonViewer.value.setTool(tool)
-  }
+}
+
+const handleWireframeToggle = (enabled: boolean) => {
+  // 状态已经在Babylon3DViewer中管理
+}
+
+const handleGridToggle = (enabled: boolean) => {
+  // 状态已经在Babylon3DViewer中管理
+}
+
+const handleAxesToggle = (enabled: boolean) => {
+  // 状态已经在Babylon3DViewer中管理
+}
+
+const handleResetView = () => {
+  // 由Babylon3DViewer处理
+}
+
+const handleFitToScreen = () => {
+  // 由Babylon3DViewer处理
+}
+
+const handleScreenshot = (dataUrl: string) => {
+  // 处理截图
+  const link = document.createElement('a')
+  link.href = dataUrl
+  link.download = 'screenshot.png'
+  link.click()
 }
 
 const handleDisplayToggle = (option: string, value: boolean) => {
-  displayOptions[option as keyof typeof displayOptions] = value
-  // 调用 Babylon 查看器的显示选项切换方法
   if (babylonViewer.value) {
     babylonViewer.value.setDisplayOption(option, value)
   }
@@ -346,7 +281,7 @@ const handleToolbarAction = (action: string) => {
       break
     case 'screenshot':
       if (babylonViewer.value) {
-        babylonViewer.value.takeScreenshot()
+        babylonViewer.value.handleScreenshot()
       }
       break
     case 'shortcuts':
@@ -362,54 +297,46 @@ const handleTransformChange = (transform: any) => {
 }
 
 const handleMaterialChange = (material: any) => {
-  if (babylonViewer.value) {
-    babylonViewer.value.updateMaterial(material)
-  }
+  // 材质变更处理
+  console.log('Material change:', material)
 }
 
 const handleLightingChange = (lighting: any) => {
-  if (babylonViewer.value) {
-    babylonViewer.value.updateLighting(lighting)
-  }
+  // 光照变更处理
+  console.log('Lighting change:', lighting)
 }
 
 const handleFullscreen = () => {
-  const element = document.querySelector('.modular-viewer')
-  if (element) {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      element.requestFullscreen()
-    }
+  if (document.fullscreenElement) {
+    document.exitFullscreen()
+  } else {
+    document.documentElement.requestFullscreen()
   }
 }
 
 // 键盘快捷键
 const handleKeydown = (event: KeyboardEvent) => {
+  if (!babylonViewer.value) return
+
   switch (event.key.toLowerCase()) {
     case 'r':
-      if (babylonViewer.value) {
-        babylonViewer.value.resetView()
-      }
+      event.preventDefault()
+      babylonViewer.value.resetView()
       break
     case 'f':
-      if (babylonViewer.value) {
-        babylonViewer.value.fitToScreen()
-      }
+      event.preventDefault()
+      babylonViewer.value.fitToScreen()
       break
     case 'g':
-      displayOptions.grid = !displayOptions.grid
-      handleDisplayToggle('grid', displayOptions.grid)
+      event.preventDefault()
+      babylonViewer.value.handleGridToggle()
       break
     case 'w':
-      displayOptions.wireframe = !displayOptions.wireframe
-      handleDisplayToggle('wireframe', displayOptions.wireframe)
+      event.preventDefault()
+      babylonViewer.value.handleWireframeToggle()
       break
-    case 'escape':
-      showShortcuts.value = false
-      showControlPanel.value = false
-      break
-    case '?':
+    case 'h':
+      event.preventDefault()
       showShortcuts.value = !showShortcuts.value
       break
   }
@@ -418,35 +345,17 @@ const handleKeydown = (event: KeyboardEvent) => {
 // 生命周期
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
-  
-  if (props.autoLoad && props.modelUrl) {
-    isLoading.value = true
-  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
 
-// 暴露方法给父组件
+// 暴露方法
 defineExpose({
-  loadModel: (url: string) => {
-    isLoading.value = true
-    error.value = ''
-    if (babylonViewer.value) {
-      babylonViewer.value.loadModel(url)
-    }
-  },
-  resetView: () => {
-    if (babylonViewer.value) {
-      babylonViewer.value.resetView()
-    }
-  },
-  takeScreenshot: () => {
-    if (babylonViewer.value) {
-      return babylonViewer.value.takeScreenshot()
-    }
-  }
+  babylonViewer,
+  showControlPanel,
+  handleToolbarAction
 })
 </script>
 

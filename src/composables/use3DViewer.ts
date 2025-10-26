@@ -4,18 +4,24 @@ import {
   Scene,
   ArcRotateCamera,
   HemisphericLight,
+  DirectionalLight,
   Vector3,
   SceneLoader,
   AbstractMesh,
   Color4,
-  type Mesh,
-  type ISceneLoaderAsyncResult,
-  // 添加网格和坐标轴支持
+  Color3,
   StandardMaterial,
+  PBRMaterial,
   MeshBuilder,
   AxesViewer,
-  Material
+  Mesh,
+  type ISceneLoaderAsyncResult,
+  TransformNode,
+  Tools,
+  ShadowGenerator,
+  CascadedShadowGenerator
 } from '@babylonjs/core'
+import { GridMaterial } from '@babylonjs/materials/grid'
 import { STLExport } from '@babylonjs/serializers'
 import '@babylonjs/loaders/glTF'
 import '@babylonjs/loaders/STL'
@@ -38,16 +44,35 @@ export interface ModelInfo {
   }
 }
 
+export interface Transform {
+  position: { x: number; y: number; z: number }
+  rotation: { x: number; y: number; z: number }
+  scale: { x: number; y: number; z: number }
+}
+
 export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | null> }) {
   const engine = ref<Engine | null>(null)
   const scene = ref<Scene | null>(null)
   const camera = ref<ArcRotateCamera | null>(null)
   const light = ref<HemisphericLight | null>(null)
+  const directionalLight = ref<DirectionalLight | null>(null)
   const currentModel = ref<AbstractMesh | null>(null)
   const isInitialized = ref(false)
   const isLoading = ref(false)
   const loadError = ref<string | null>(null)
   const modelInfo = ref<ModelInfo | null>(null)
+  
+  // 控制状态
+  const showWireframe = ref(false)
+  const showGrid = ref(true)
+  const showAxes = ref(true)
+  const currentView = ref('perspective')
+  const activeTool = ref('rotate')
+  
+  // 辅助对象
+  const gridMesh = ref<Mesh | null>(null)
+  const axesViewer = ref<AxesViewer | null>(null)
+  const shadowGenerator = ref<ShadowGenerator | null>(null)
 
   const initViewer = (options: ViewerOptions = {}) => {
     if (!canvasRef.value) {
@@ -58,39 +83,62 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
       return
     }
 
-    engine.value = new Engine(canvasRef.value, true, {
-      preserveDrawingBuffer: true,
-      stencil: true,
-    })
+    try {
+      engine.value = new Engine(canvasRef.value, true, {
+        preserveDrawingBuffer: true,
+        stencil: true,
+      })
 
-    scene.value = new Scene(engine.value)
-    scene.value.clearColor = options.clearColor || new Color4(0.95, 0.95, 0.95, 1)
+      scene.value = new Scene(engine.value)
+      scene.value.clearColor = options.clearColor || new Color4(0.95, 0.95, 0.95, 1)
 
-    camera.value = new ArcRotateCamera(
-      'camera',
-      -Math.PI / 2,
-      Math.PI / 2.5,
-      10,
-      Vector3.Zero(),
-      scene.value
-    )
-    camera.value.attachControl(canvasRef.value, true)
-    camera.value.wheelPrecision = 50
-    camera.value.minZ = 0.1
-    camera.value.lowerRadiusLimit = 1
-    camera.value.upperRadiusLimit = 100
+      // 创建相机
+      camera.value = new ArcRotateCamera(
+        'camera',
+        -Math.PI / 2,
+        Math.PI / 2.5,
+        10,
+        Vector3.Zero(),
+        scene.value
+      )
+      camera.value.attachControl(canvasRef.value, true)
+      camera.value.wheelPrecision = 50
+      camera.value.minZ = 0.1
+      camera.value.lowerRadiusLimit = 1
+      camera.value.upperRadiusLimit = 100
 
-    light.value = new HemisphericLight('light', new Vector3(0, 1, 0), scene.value)
-    light.value.intensity = 1.0
+      // 创建光源
+      light.value = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), scene.value)
+      light.value.intensity = 0.6
 
-    engine.value.runRenderLoop(() => {
-      if (scene.value) {
-        scene.value.render()
-      }
-    })
+      directionalLight.value = new DirectionalLight('directionalLight', new Vector3(-1, -1, -1), scene.value)
+      directionalLight.value.intensity = 0.8
+      directionalLight.value.position = new Vector3(10, 10, 10)
 
-    window.addEventListener('resize', handleResize)
-    isInitialized.value = true
+      // 创建阴影生成器
+      shadowGenerator.value = new ShadowGenerator(1024, directionalLight.value)
+      shadowGenerator.value.useBlurExponentialShadowMap = true
+
+      // 初始化网格
+      createGrid()
+      
+      // 初始化坐标轴
+      createAxes()
+
+      engine.value.runRenderLoop(() => {
+        if (scene.value) {
+          scene.value.render()
+        }
+      })
+
+      window.addEventListener('resize', handleResize)
+      isInitialized.value = true
+      
+      console.log('[3DViewer] Viewer initialized successfully')
+    } catch (error) {
+      console.error('[3DViewer] Failed to initialize viewer:', error)
+      throw error
+    }
   }
 
   const handleResize = () => {
@@ -99,25 +147,60 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     }
   }
 
+  const createGrid = () => {
+    if (!scene.value) return
+
+    try {
+      // 创建网格材质
+      const gridMaterial = new GridMaterial('gridMaterial', scene.value)
+      gridMaterial.majorUnitFrequency = 5
+      gridMaterial.minorUnitVisibility = 0.45
+      gridMaterial.gridRatio = 1
+      gridMaterial.backFaceCulling = false
+      gridMaterial.mainColor = new Color3(1, 1, 1)
+      gridMaterial.lineColor = new Color3(1.0, 1.0, 1.0)
+      gridMaterial.opacity = 0.98
+
+      // 创建网格平面
+      gridMesh.value = MeshBuilder.CreateGround('grid', { width: 50, height: 50 }, scene.value)
+      gridMesh.value.material = gridMaterial
+      gridMesh.value.receiveShadows = true
+      gridMesh.value.setEnabled(showGrid.value)
+      
+      console.log('[3DViewer] Grid created successfully')
+    } catch (error) {
+      console.error('[3DViewer] Failed to create grid:', error)
+    }
+  }
+
+  const createAxes = () => {
+    if (!scene.value) return
+
+    try {
+      axesViewer.value = new AxesViewer(scene.value, 2)
+      axesViewer.value.setEnabled(showAxes.value)
+      
+      console.log('[3DViewer] Axes created successfully')
+    } catch (error) {
+      console.error('[3DViewer] Failed to create axes:', error)
+    }
+  }
+
   const loadModel = async (url: string, fileName?: string): Promise<void> => {
     if (!scene.value) {
       throw new Error('Scene not initialized. Call initViewer() first.')
     }
 
-    // 验证URL格式
     if (!url || typeof url !== 'string') {
       const errorMessage = 'Invalid model URL provided'
       loadError.value = errorMessage
       throw new Error(errorMessage)
     }
 
-    // 检查URL是否为有效的3D模型文件
     const supportedExtensions = ['.glb', '.gltf', '.fbx', '.obj', '.stl', '.babylon']
     const urlLower = url.toLowerCase()
     
-    // 更精确的文件扩展名检测
     const getFileExtension = (url: string): string => {
-      // 移除查询参数和片段
       const cleanUrl = url.split('?')[0].split('#')[0]
       const lastDotIndex = cleanUrl.lastIndexOf('.')
       if (lastDotIndex === -1) return ''
@@ -131,7 +214,7 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
                            urlLower.includes('data:')
 
     if (!isValidExtension) {
-      const errorMessage = `Unsupported file format. Supported formats: ${supportedExtensions.join(', ')}. Detected extension: ${fileExtension || 'none'}`
+      const errorMessage = `Unsupported file format. Supported formats: ${supportedExtensions.join(', ')}`
       loadError.value = errorMessage
       throw new Error(errorMessage)
     }
@@ -147,7 +230,6 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
 
       console.log('[3DViewer] Loading model from URL:', url)
 
-      // 使用标准的SceneLoader加载模型
       const result: ISceneLoaderAsyncResult = await SceneLoader.ImportMeshAsync(
         '',
         '',
@@ -156,58 +238,37 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
       )
 
       if (!result || !result.meshes || result.meshes.length === 0) {
-        throw new Error('No meshes found in the model file. The file may be empty or corrupted.')
+        throw new Error('No meshes found in the model file')
       }
 
       const rootMesh = result.meshes[0]
       currentModel.value = rootMesh
 
+      // 设置阴影
+      if (shadowGenerator.value) {
+        result.meshes.forEach(mesh => {
+          if (mesh instanceof Mesh) {
+            shadowGenerator.value!.addShadowCaster(mesh)
+            mesh.receiveShadows = true
+          }
+        })
+      }
+
       frameModel(rootMesh)
       updateModelInfo(result.meshes)
+      applyWireframeMode(showWireframe.value)
 
-      console.log('[3DViewer] Model loaded successfully:', {
-        meshCount: result.meshes.length,
-        vertices: result.meshes.reduce((total, mesh) => {
-          return total + ('getTotalVertices' in mesh ? (mesh as Mesh).getTotalVertices() : 0)
-        }, 0)
-      })
-
+      console.log('[3DViewer] Model loaded successfully')
       isLoading.value = false
     } catch (error) {
       isLoading.value = false
       
       let errorMessage = 'Failed to load model'
-      
       if (error instanceof Error) {
-        // 处理特定的错误类型
-        if (error.message.includes('JSON parse') || error.message.includes('Unexpected token')) {
-          errorMessage = 'Invalid GLB/GLTF file format. The file may be corrupted, incomplete, or not a valid 3D model.'
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          errorMessage = 'Network error: Unable to download the model file. Please check your internet connection and try again.'
-        } else if (error.message.includes('timeout')) {
-          errorMessage = 'Request timeout: The model file is taking too long to download. Please try again or use a smaller file.'
-        } else if (error.message.includes('404') || error.message.includes('Not Found')) {
-          errorMessage = 'Model file not found. The URL may be invalid or the file may have been removed.'
-        } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
-          errorMessage = 'Access denied: You do not have permission to access this model file.'
-        } else if (error.message.includes('415') || error.message.includes('Unsupported Media Type')) {
-          errorMessage = 'Unsupported file type: The file is not a valid 3D model format.'
-        } else if (error.message.includes('CORS')) {
-          errorMessage = 'CORS error: The server does not allow cross-origin requests. Please check the file URL or server configuration.'
-        } else if (error.message.includes('No meshes found')) {
-          errorMessage = error.message
-        } else {
-          errorMessage = `Loading error: ${error.message}`
-        }
+        errorMessage = `Loading error: ${error.message}`
       }
       
-      console.error('[3DViewer] Model loading failed:', {
-        url,
-        fileName,
-        error: errorMessage,
-        originalError: error
-      })
-      
+      console.error('[3DViewer] Model loading failed:', error)
       loadError.value = errorMessage
       throw new Error(errorMessage)
     }
@@ -222,16 +283,14 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     const maxDim = Math.max(size.x, size.y, size.z)
 
     camera.value.target = center
-    camera.value.radius = maxDim * 2
-    camera.value.alpha = -Math.PI / 2
-    camera.value.beta = Math.PI / 2.5
+    camera.value.radius = maxDim * 2.5
+    camera.value.alpha = -Math.PI / 4
+    camera.value.beta = Math.PI / 3
   }
 
   const updateModelInfo = (meshes: AbstractMesh[]) => {
     let totalVertices = 0
     let totalFaces = 0
-    let materialCount = 0
-
     const materials = new Set()
 
     meshes.forEach(mesh => {
@@ -246,8 +305,6 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
       }
     })
 
-    materialCount = materials.size
-
     if (currentModel.value) {
       const boundingInfo = currentModel.value.getHierarchyBoundingVectors()
       const min = boundingInfo.min
@@ -258,17 +315,138 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
       modelInfo.value = {
         vertices: totalVertices,
         faces: Math.floor(totalFaces),
-        materials: materialCount,
-        boundingBox: {
-          min,
-          max,
-          size,
-          center,
-        },
+        materials: materials.size,
+        boundingBox: { min, max, size, center }
       }
     }
   }
 
+  // 控制功能实现
+  const setViewMode = (mode: string) => {
+    if (!camera.value) return
+
+    currentView.value = mode
+    
+    switch (mode) {
+      case 'perspective':
+        camera.value.mode = 0
+        break
+      case 'orthographic':
+        camera.value.mode = 1
+        break
+      case 'top':
+        camera.value.alpha = 0
+        camera.value.beta = 0.1
+        break
+      case 'front':
+        camera.value.alpha = -Math.PI / 2
+        camera.value.beta = Math.PI / 2
+        break
+      case 'side':
+        camera.value.alpha = 0
+        camera.value.beta = Math.PI / 2
+        break
+    }
+  }
+
+  const toggleWireframe = (enabled?: boolean) => {
+    const newState = enabled !== undefined ? enabled : !showWireframe.value
+    showWireframe.value = newState
+    applyWireframeMode(newState)
+  }
+
+  const applyWireframeMode = (enabled: boolean) => {
+    if (!scene.value) return
+
+    scene.value.meshes.forEach(mesh => {
+      if (mesh.material && mesh !== gridMesh.value) {
+        mesh.material.wireframe = enabled
+      }
+    })
+  }
+
+  const toggleGrid = (enabled?: boolean) => {
+    const newState = enabled !== undefined ? enabled : !showGrid.value
+    showGrid.value = newState
+    
+    if (gridMesh.value) {
+      gridMesh.value.setEnabled(newState)
+    }
+  }
+
+  const toggleAxes = (enabled?: boolean) => {
+    const newState = enabled !== undefined ? enabled : !showAxes.value
+    showAxes.value = newState
+    
+    if (axesViewer.value) {
+      axesViewer.value.setEnabled(newState)
+    }
+  }
+
+  const resetCamera = () => {
+    if (!camera.value) return
+
+    if (currentModel.value) {
+      frameModel(currentModel.value)
+    } else {
+      camera.value.alpha = -Math.PI / 2
+      camera.value.beta = Math.PI / 2.5
+      camera.value.radius = 10
+      camera.value.target = Vector3.Zero()
+    }
+  }
+
+  const setZoom = (delta: number) => {
+    if (camera.value) {
+      camera.value.radius *= (1 + delta)
+    }
+  }
+
+  const rotateModel = (x: number, y: number) => {
+    if (camera.value) {
+      camera.value.alpha += x
+      camera.value.beta += y
+    }
+  }
+
+  const updateTransform = (transform: Transform) => {
+    if (!currentModel.value) return
+
+    currentModel.value.position.x = transform.position.x
+    currentModel.value.position.y = transform.position.y
+    currentModel.value.position.z = transform.position.z
+
+    currentModel.value.rotation.x = Tools.ToRadians(transform.rotation.x)
+    currentModel.value.rotation.y = Tools.ToRadians(transform.rotation.y)
+    currentModel.value.rotation.z = Tools.ToRadians(transform.rotation.z)
+
+    currentModel.value.scaling.x = transform.scale.x
+    currentModel.value.scaling.y = transform.scale.y
+    currentModel.value.scaling.z = transform.scale.z
+  }
+
+  const takeScreenshot = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!engine.value) {
+        reject(new Error('Engine not initialized'))
+        return
+      }
+
+      try {
+        const canvas = engine.value.getRenderingCanvas()
+        if (canvas) {
+          const dataURL = canvas.toDataURL('image/png')
+          resolve(dataURL)
+        } else {
+          reject(new Error('Canvas not found'))
+        }
+      } catch (error) {
+        reject(error)
+      }
+    })
+  }
+
+  // 导出功能
   const exportSTL = async (): Promise<Blob | null> => {
     if (!currentModel.value || !scene.value) {
       throw new Error('No model loaded')
@@ -276,8 +454,7 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
 
     try {
       const stlString = STLExport.CreateSTL([currentModel.value], true, currentModel.value.name || 'model')
-      const blob = new Blob([stlString], { type: 'application/octet-stream' })
-      return blob
+      return new Blob([stlString], { type: 'application/octet-stream' })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       throw new Error(`Failed to export STL: ${errorMessage}`)
@@ -301,72 +478,23 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
     }
   }
 
-  const exportGLTF = async (): Promise<{ gltf: Blob; bin: Blob | null } | null> => {
-    if (!scene.value) {
-      console.error('Scene not initialized')
-      return null
-    }
-
-    try {
-      const { GLTF2Export } = await import('@babylonjs/serializers/glTF')
-      const gltf = await GLTF2Export.GLTFAsync(scene.value, 'model')
-      
-      const gltfBlob = new Blob([JSON.stringify(gltf.glTFFiles['model.gltf'])], { 
-        type: 'model/gltf+json' 
-      })
-      
-      const binBlob = gltf.glTFFiles['model.bin'] 
-        ? new Blob([gltf.glTFFiles['model.bin']], { type: 'application/octet-stream' })
-        : null
-      
-      return { gltf: gltfBlob, bin: binBlob }
-    } catch (error) {
-      console.error('Failed to export GLTF:', error)
-      return null
-    }
-  }
-
-  const exportOBJ = async (): Promise<Blob | null> => {
-    if (!scene.value) {
-      console.error('Scene not initialized')
-      return null
-    }
-
-    try {
-      const { OBJExport } = await import('@babylonjs/serializers/OBJ')
-      const objString = OBJExport.OBJ([scene.value])
-      const blob = new Blob([objString], { type: 'model/obj' })
-      return blob
-    } catch (error) {
-      console.error('Failed to export OBJ:', error)
-      return null
-    }
-  }
-
-  const resetCamera = () => {
-    if (camera.value) {
-      camera.value.alpha = -Math.PI / 2
-      camera.value.beta = Math.PI / 2.5
-      camera.value.radius = 10
-      camera.value.target = Vector3.Zero()
-    }
-  }
-
-  const setZoom = (delta: number) => {
-    if (camera.value) {
-      camera.value.radius *= (1 + delta)
-    }
-  }
-
-  const rotateModel = (x: number, y: number) => {
-    if (camera.value) {
-      camera.value.alpha += x
-      camera.value.beta += y
-    }
-  }
-
   const dispose = () => {
     window.removeEventListener('resize', handleResize)
+    
+    if (axesViewer.value) {
+      axesViewer.value.dispose()
+      axesViewer.value = null
+    }
+
+    if (gridMesh.value) {
+      gridMesh.value.dispose()
+      gridMesh.value = null
+    }
+
+    if (shadowGenerator.value) {
+      shadowGenerator.value.dispose()
+      shadowGenerator.value = null
+    }
     
     if (currentModel.value) {
       currentModel.value.dispose()
@@ -391,24 +519,43 @@ export function use3DViewer({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement | 
   })
 
   return {
+    // 核心对象
     engine,
     scene,
     camera,
     light,
+    directionalLight,
     currentModel,
+    
+    // 状态
     isInitialized,
     isLoading,
     loadError,
     modelInfo,
+    showWireframe,
+    showGrid,
+    showAxes,
+    currentView,
+    activeTool,
+    
+    // 核心方法
     initViewer,
     loadModel,
-    exportSTL,
-    exportGLB,
-    exportGLTF,
-    exportOBJ,
+    dispose,
+    
+    // 控制方法
+    setViewMode,
+    toggleWireframe,
+    toggleGrid,
+    toggleAxes,
     resetCamera,
     setZoom,
     rotateModel,
-    dispose,
+    updateTransform,
+    takeScreenshot,
+    
+    // 导出方法
+    exportSTL,
+    exportGLB,
   }
 }

@@ -1,87 +1,45 @@
 <template>
-  <div class="babylon-3d-viewer relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
-    <canvas
-      ref="canvasRef"
-      class="viewer-canvas w-full h-full"
-    />
+  <div class="babylon-viewer" ref="containerRef">
+    <canvas ref="canvasRef" class="babylon-canvas" />
     
-    <div
-      v-if="isLoading"
-      class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50"
-    >
-      <div class="text-center text-white">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4" />
-        <p class="text-lg">
-          加载模型中...
-        </p>
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>正在加载模型...</p>
+    </div>
+    
+    <!-- 错误状态 -->
+    <div v-if="loadError" class="error-overlay">
+      <div class="error-content">
+        <h3>加载失败</h3>
+        <p>{{ loadError }}</p>
+        <button @click="retryLoad" class="retry-button">重试</button>
       </div>
     </div>
-
-    <div
-      v-if="loadError"
-      class="error-overlay absolute inset-0 flex items-center justify-center bg-red-50"
-    >
-      <div class="text-center text-red-600 p-6">
-        <svg
-          class="w-16 h-16 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-        <p class="text-lg font-semibold mb-2">
-          加载失败
-        </p>
-        <p class="text-sm">
-          {{ loadError }}
-        </p>
+    
+    <!-- 模型信息 -->
+    <div v-if="modelInfo && !isLoading && !loadError" class="model-info">
+      <div class="info-item">
+        <span>顶点: {{ modelInfo.vertices.toLocaleString() }}</span>
       </div>
-    </div>
-
-    <div
-      v-if="!currentModel && !isLoading && !loadError"
-      class="absolute inset-0 flex items-center justify-center text-gray-400"
-    >
-      <div class="text-center">
-        <svg
-          class="w-16 h-16 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-          />
-        </svg>
-        <p class="text-lg">
-          暂无模型
-        </p>
-        <p class="text-sm mt-2">
-          请加载3D模型以开始查看
-        </p>
+      <div class="info-item">
+        <span>面: {{ modelInfo.faces.toLocaleString() }}</span>
+      </div>
+      <div class="info-item">
+        <span>材质: {{ modelInfo.materials }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { use3DViewer, type ModelInfo } from '@/composables/use3DViewer'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { use3DViewer } from '@/composables/use3DViewer'
 
+// Props
 interface Props {
   modelUrl?: string
   autoLoad?: boolean
-  clearColor?: string
-  // ViewerToolbar 支持的控制选项
   showWireframe?: boolean
   showGrid?: boolean
   showAxes?: boolean
@@ -90,9 +48,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelUrl: '',
   autoLoad: true,
-  clearColor: '#f3f4f6',
   showWireframe: false,
   showGrid: true,
   showAxes: true,
@@ -100,99 +56,144 @@ const props = withDefaults(defineProps<Props>(), {
   activeTool: 'rotate'
 })
 
-interface Emits {
-  (e: 'loaded', info: ModelInfo): void
-  (e: 'error', error: string): void
-  (e: 'viewerReady'): void
-  (e: 'modelLoaded'): void
-  (e: 'modelError', error: string): void
-  // ViewerToolbar 事件支持
-  (e: 'viewChange', view: string): void
-  (e: 'toolChange', tool: string): void
-  (e: 'wireframeToggle', enabled: boolean): void
-  (e: 'gridToggle', enabled: boolean): void
-  (e: 'axesToggle', enabled: boolean): void
-  (e: 'resetView'): void
-  (e: 'fitToScreen'): void
-  (e: 'screenshot'): void
-}
+// Emits
+const emit = defineEmits<{
+  loaded: [model: any]
+  error: [error: string]
+  viewerReady: []
+  modelLoaded: [info: any]
+  modelError: [error: string]
+  viewChange: [view: string]
+  toolChange: [tool: string]
+  wireframeToggle: [enabled: boolean]
+  gridToggle: [enabled: boolean]
+  axesToggle: [enabled: boolean]
+  resetView: []
+  fitToScreen: []
+  screenshot: [dataUrl: string]
+}>()
 
-const emit = defineEmits<Emits>()
+// Refs
+const containerRef = ref<HTMLDivElement>()
+const canvasRef = ref<HTMLCanvasElement>()
 
-const canvasRef = ref<HTMLCanvasElement | null>(null)
-
+// 使用3D查看器composable
 const {
-  scene,
-  camera,
-  engine,
-  currentModel,
   isInitialized,
   isLoading,
   loadError,
   modelInfo,
+  showWireframe,
+  showGrid,
+  showAxes,
+  currentView,
+  activeTool,
   initViewer,
   loadModel,
-  exportSTL,
-  exportGLB,
-  exportGLTF,
-  exportOBJ,
+  setViewMode,
+  toggleWireframe,
+  toggleGrid,
+  toggleAxes,
   resetCamera,
   setZoom,
   rotateModel,
-  dispose,
+  updateTransform,
+  takeScreenshot,
+  dispose
 } = use3DViewer({ canvasRef })
 
-// ViewerToolbar 控制功能
-const handleViewChange = (view: string) => {
-  if (!camera.value || !scene.value) return
+// 初始化查看器
+onMounted(async () => {
+  await nextTick()
   
-  switch (view) {
-    case 'perspective':
-      camera.value.mode = 0 // PERSPECTIVE_CAMERA
-      break
-    case 'orthographic':
-      camera.value.mode = 1 // ORTHOGRAPHIC_CAMERA
-      break
-    case 'top':
-      camera.value.alpha = 0
-      camera.value.beta = 0
-      break
-    case 'front':
-      camera.value.alpha = -Math.PI / 2
-      camera.value.beta = Math.PI / 2
-      break
-    case 'side':
-      camera.value.alpha = 0
-      camera.value.beta = Math.PI / 2
-      break
+  try {
+    initViewer()
+    emit('viewerReady')
+    
+    // 如果有模型URL且自动加载，则加载模型
+    if (props.modelUrl && props.autoLoad) {
+      await loadModelFromUrl(props.modelUrl)
+    }
+  } catch (error) {
+    console.error('Failed to initialize viewer:', error)
+    emit('error', error instanceof Error ? error.message : 'Unknown error')
   }
+})
+
+// 加载模型
+const loadModelFromUrl = async (url: string) => {
+  try {
+    await loadModel(url)
+    emit('loaded', modelInfo.value)
+    emit('modelLoaded', modelInfo.value)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    emit('error', errorMessage)
+    emit('modelError', errorMessage)
+  }
+}
+
+// 重试加载
+const retryLoad = async () => {
+  if (props.modelUrl) {
+    await loadModelFromUrl(props.modelUrl)
+  }
+}
+
+// 监听props变化
+watch(() => props.modelUrl, async (newUrl) => {
+  if (newUrl && isInitialized.value) {
+    await loadModelFromUrl(newUrl)
+  }
+})
+
+watch(() => props.showWireframe, (newValue) => {
+  toggleWireframe(newValue)
+  emit('wireframeToggle', newValue)
+})
+
+watch(() => props.showGrid, (newValue) => {
+  toggleGrid(newValue)
+  emit('gridToggle', newValue)
+})
+
+watch(() => props.showAxes, (newValue) => {
+  toggleAxes(newValue)
+  emit('axesToggle', newValue)
+})
+
+watch(() => props.currentView, (newValue) => {
+  setViewMode(newValue)
+  emit('viewChange', newValue)
+})
+
+// ViewerToolbar事件处理方法
+const handleViewChange = (view: string) => {
+  setViewMode(view)
   emit('viewChange', view)
 }
 
 const handleToolChange = (tool: string) => {
-  // 工具切换逻辑可以在这里实现
+  activeTool.value = tool
   emit('toolChange', tool)
 }
 
-const handleWireframeToggle = (enabled: boolean) => {
-  if (!scene.value) return
-  
-  scene.value.meshes.forEach(mesh => {
-    if (mesh.material) {
-      mesh.material.wireframe = enabled
-    }
-  })
-  emit('wireframeToggle', enabled)
+const handleWireframeToggle = () => {
+  const newState = !showWireframe.value
+  toggleWireframe(newState)
+  emit('wireframeToggle', newState)
 }
 
-const handleGridToggle = (enabled: boolean) => {
-  // 网格显示/隐藏逻辑
-  emit('gridToggle', enabled)
+const handleGridToggle = () => {
+  const newState = !showGrid.value
+  toggleGrid(newState)
+  emit('gridToggle', newState)
 }
 
-const handleAxesToggle = (enabled: boolean) => {
-  // 坐标轴显示/隐藏逻辑
-  emit('axesToggle', enabled)
+const handleAxesToggle = () => {
+  const newState = !showAxes.value
+  toggleAxes(newState)
+  emit('axesToggle', newState)
 }
 
 const handleResetView = () => {
@@ -201,82 +202,20 @@ const handleResetView = () => {
 }
 
 const handleFitToScreen = () => {
-  if (currentModel.value) {
-    resetCamera()
-  }
+  resetCamera()
   emit('fitToScreen')
 }
 
-const handleScreenshot = () => {
-  if (!engine.value) return
-  
+const handleScreenshot = async () => {
   try {
-    const canvas = engine.value.getRenderingCanvas()
-    if (canvas) {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = 'screenshot.png'
-          link.click()
-          URL.revokeObjectURL(url)
-        }
-      })
-    }
+    const dataUrl = await takeScreenshot()
+    emit('screenshot', dataUrl)
   } catch (error) {
     console.error('Screenshot failed:', error)
   }
-  emit('screenshot')
 }
 
-// 监听props变化
-watch(() => props.showWireframe, (enabled) => {
-  handleWireframeToggle(enabled)
-})
-
-watch(() => props.currentView, (view) => {
-  handleViewChange(view)
-})
-
-onMounted(() => {
-  initViewer()
-  emit('viewerReady')
-
-  if (props.modelUrl && props.autoLoad) {
-    handleLoadModel(props.modelUrl)
-  }
-})
-
-watch(() => props.modelUrl, (newUrl) => {
-  if (newUrl && props.autoLoad) {
-    handleLoadModel(newUrl)
-  }
-})
-
-watch(() => modelInfo.value, (info) => {
-  if (info) {
-    emit('loaded', info)
-    emit('modelLoaded')
-  }
-})
-
-watch(() => loadError.value, (error) => {
-  if (error) {
-    emit('error', error)
-    emit('modelError', error)
-  }
-})
-
-const handleLoadModel = async (url: string) => {
-  try {
-    await loadModel(url)
-  } catch (error) {
-    console.error('Failed to load model:', error)
-  }
-}
-
-// ModularViewer 期望的接口方法
+// ModularViewer期望的接口方法
 const setView = (view: string) => {
   handleViewChange(view)
 }
@@ -285,16 +224,19 @@ const setTool = (tool: string) => {
   handleToolChange(tool)
 }
 
-const setDisplayOption = (option: string, value: boolean) => {
+const setDisplayOption = (option: string, enabled: boolean) => {
   switch (option) {
     case 'wireframe':
-      handleWireframeToggle(value)
+      toggleWireframe(enabled)
+      emit('wireframeToggle', enabled)
       break
     case 'grid':
-      handleGridToggle(value)
+      toggleGrid(enabled)
+      emit('gridToggle', enabled)
       break
     case 'axes':
-      handleAxesToggle(value)
+      toggleAxes(enabled)
+      emit('axesToggle', enabled)
       break
   }
 }
@@ -307,31 +249,17 @@ const fitToScreen = () => {
   handleFitToScreen()
 }
 
-const takeScreenshot = () => {
-  handleScreenshot()
+const takeScreenshotMethod = async () => {
+  return await takeScreenshot()
 }
 
-const updateTransform = (transform: any) => {
-  // 实现变换更新逻辑
-  console.log('Transform update:', transform)
+const updateTransformMethod = (transform: any) => {
+  updateTransform(transform)
 }
 
+// 暴露方法给父组件
 defineExpose({
-  scene,
-  camera,
-  engine,
-  isInitialized,
-  currentModel,
-  loadModel: handleLoadModel,
-  exportSTL,
-  exportGLB,
-  exportGLTF,
-  exportOBJ,
-  resetCamera,
-  setZoom,
-  rotateModel,
-  dispose,
-  // ViewerToolbar 控制方法
+  // ViewerToolbar控制方法
   handleViewChange,
   handleToolChange,
   handleWireframeToggle,
@@ -340,13 +268,149 @@ defineExpose({
   handleResetView,
   handleFitToScreen,
   handleScreenshot,
-  // ModularViewer 期望的接口
+  
+  // ModularViewer期望的方法
   setView,
   setTool,
   setDisplayOption,
   resetView,
   fitToScreen,
-  takeScreenshot,
-  updateTransform,
+  takeScreenshot: takeScreenshotMethod,
+  updateTransform: updateTransformMethod,
+  
+  // 直接暴露composable方法
+  loadModel: loadModelFromUrl,
+  setZoom,
+  rotateModel,
+  
+  // 状态
+  isLoading,
+  loadError,
+  modelInfo,
+  showWireframe,
+  showGrid,
+  showAxes,
+  currentView,
+  activeTool
+})
+
+// 清理
+onUnmounted(() => {
+  dispose()
 })
 </script>
+
+<style scoped>
+.babylon-viewer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.babylon-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.error-content {
+  text-align: center;
+  padding: 24px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+}
+
+.error-content h3 {
+  color: #e74c3c;
+  margin: 0 0 12px 0;
+  font-size: 18px;
+}
+
+.error-content p {
+  color: #666;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.retry-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background: #2980b9;
+}
+
+.model-info {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 5;
+}
+
+.info-item {
+  margin-bottom: 4px;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+</style>
