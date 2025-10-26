@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 
 // 类型定义 - 匹配Meshy API响应格式
 interface HistoryItem {
@@ -153,8 +153,12 @@ const props = defineProps<Props>()
 const emit = defineEmits([
   'category-change',
   'load-history-item',
-  'clear-history'
+  'clear-history',
+  'refresh-history' // 新增：通知父组件刷新历史数据
 ])
+
+// 定时器引用
+let refreshTimer: NodeJS.Timeout | null = null
 
 // 分类配置
 const categories = [
@@ -174,6 +178,46 @@ const displayHistory = computed(() => {
     default:
       return [...(props.textTo3dTasks || []), ...(props.imageTo3dTasks || [])]
   }
+})
+
+// 刷新历史数据的方法
+const refreshHistoryData = () => {
+  emit('refresh-history')
+}
+
+// 启动定时器
+const startAutoRefresh = () => {
+  // 清除现有定时器
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+  
+  // 设置每2秒刷新一次
+  refreshTimer = setInterval(() => {
+    refreshHistoryData()
+  }, 2000)
+}
+
+// 停止定时器
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+// 生命周期钩子
+onMounted(() => {
+  // 组件挂载时立即拉取一次数据
+  refreshHistoryData()
+  
+  // 启动定时刷新
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  // 组件销毁时清理定时器
+  stopAutoRefresh()
 })
 
 // 方法

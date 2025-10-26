@@ -50,6 +50,7 @@
       @load-history-item="loadHistoryItem"
       @delete-history-item="deleteHistoryItem"
       @clear-history="clearHistory"
+      @refresh-history="loadHistoryData"
     />
 
     <!-- 通知组件 -->
