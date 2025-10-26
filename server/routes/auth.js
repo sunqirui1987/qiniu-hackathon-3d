@@ -290,7 +290,10 @@ router.get('/:provider/callback', async (req, res, next) => {
     
     const result = await authService.loginWithOAuth(provider, code, state)
     
-    res.redirect(`${frontendUrl}/auth/callback?token=${result.accessToken}&refresh_token=${result.refreshToken}`)
+    // 将用户信息编码并传递给前端
+    const userData = encodeURIComponent(JSON.stringify(result.user))
+    
+    res.redirect(`${frontendUrl}/auth/callback?token=${result.accessToken}&refreshToken=${result.refreshToken}&user=${userData}`)
   } catch (error) {
     console.error('[OAuth Callback Error]:', error)
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
