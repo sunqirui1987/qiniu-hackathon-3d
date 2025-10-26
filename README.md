@@ -35,10 +35,7 @@
 
 <div align="center">
 
-<video width="800" controls>
-  <source src="https://aidraw-styleart.oss-cn-hangzhou.aliyuncs.com/screenrecord.mp4" type="video/mp4">
-  您的浏览器不支持视频标签。
-</video>
+https://github.com/user-attachments/assets/f84210b4-45a2-40b3-86b2-8f837f5ca719
 
 *完整功能演示 - 从文本生成到3D打印的完整工作流*
 
