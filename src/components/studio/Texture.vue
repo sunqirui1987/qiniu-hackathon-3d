@@ -1,79 +1,98 @@
 <template>
   <div class="p-6">
-    <div class="space-y-6">
+    <!-- 占位区域 - 当没有选中模型时显示 -->
+    <div v-if="!currentModel" class="flex flex-col items-center justify-center h-96 text-center">
+      <div class="mb-6">
+        <svg class="w-24 h-24 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17v4a2 2 0 002 2h4M13 13h4a2 2 0 012 2v4a2 2 0 01-2 2h-4m-6-4a2 2 0 01-2-2V9a2 2 0 012-2h2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">选择模型进行纹理生成</h3>
+        <p class="text-gray-500 dark:text-gray-400 text-sm max-w-md mx-auto leading-relaxed">
+          请先从右侧历史面板选择一个已生成的3D模型，或者生成新的3D模型后再进行纹理生成操作
+        </p>
+      </div>
+      
+      <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+        <span class="text-sm font-medium">查看右侧历史面板</span>
+      </div>
+    </div>
+
+    <!-- 主要内容区域 - 当有选中模型时显示 -->
+    <div v-else class="space-y-6">
       <div class="text-center mb-6">
         <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">贴图</h3>
         <p class="text-gray-600 dark:text-gray-400 text-sm">为3D模型生成纹理贴图</p>
       </div>
 
       <form @submit.prevent="handleSubmit" class="space-y-6">
-        <!-- 输入源选择 -->
+        <!-- 当前选择的模型信息 - 当有选中模型时显示 -->
+        <div v-if="selectedItem" class="form-group">
+          <div class="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                已选择模型【{{ selectedItem.id }}】
+              </span>
+            </div>
+          </div>
+        </div>
+
+
+
+        <!-- 纹理输入方式选择 -->
         <div class="form-group">
-          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">输入源</label>
-          <div class="space-y-3">
-            <label class="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">纹理输入方式</label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="relative">
               <input
                 type="radio"
-                value="existing_task"
-                v-model="textureOptions.input_source"
-                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                value="text_prompt"
+                v-model="textureOptions.texture_input_type"
+                class="sr-only"
               />
-              <div>
-                <div class="text-sm font-medium text-gray-900 dark:text-white">使用现有任务</div>
-                <div class="text-xs text-gray-500">从已生成的3D模型中选择</div>
+              <div :class="[
+                'p-3 border-2 rounded-lg cursor-pointer transition-all duration-300 text-center',
+                textureOptions.texture_input_type === 'text_prompt'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500'
+              ]">
+                <svg class="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <div class="text-sm font-medium">文字描述</div>
+                <div class="text-xs text-gray-500 mt-1">通过文字描述生成纹理</div>
               </div>
             </label>
-            
-            <label class="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <label class="relative">
               <input
                 type="radio"
-                value="upload_model"
-                v-model="textureOptions.input_source"
-                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                value="image_reference"
+                v-model="textureOptions.texture_input_type"
+                class="sr-only"
               />
-              <div>
-                <div class="text-sm font-medium text-gray-900 dark:text-white">上传模型URL</div>
-                <div class="text-xs text-gray-500">提供3D模型的下载链接</div>
+              <div :class="[
+                'p-3 border-2 rounded-lg cursor-pointer transition-all duration-300 text-center',
+                textureOptions.texture_input_type === 'image_reference'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500'
+              ]">
+                <svg class="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div class="text-sm font-medium">参考图片</div>
+                <div class="text-xs text-gray-500 mt-1">上传图片作为纹理参考</div>
               </div>
             </label>
           </div>
         </div>
 
-        <!-- 现有任务选择 -->
-        <div v-if="textureOptions.input_source === 'existing_task'" class="form-group">
-          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">选择任务</label>
-          <select
-            v-model="textureOptions.task_id"
-            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">请选择一个任务</option>
-            <option v-for="task in availableTasks" :key="task.id" :value="task.id">
-              {{ task.name }} - {{ task.created_at }}
-            </option>
-          </select>
-        </div>
-
-        <!-- 模型URL输入 -->
-        <div v-if="textureOptions.input_source === 'upload_model'" class="form-group">
-          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            <span class="flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              模型URL *
-            </span>
-          </label>
-          <input
-            type="url"
-            v-model="textureOptions.model_url"
-            placeholder="https://example.com/model.obj"
-            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-          />
-          <div class="text-xs text-gray-500 mt-1">支持 OBJ、PLY、STL 等格式</div>
-        </div>
-
-        <!-- 纹理风格描述 -->
-        <div class="form-group">
+        <!-- 纹理风格描述 - 文字描述模式 -->
+        <div v-if="textureOptions.texture_input_type === 'text_prompt'" class="form-group">
           <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <span class="flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,6 +109,65 @@
             maxlength="600"
           ></textarea>
           <div class="text-xs text-gray-500 mt-1">{{ textureOptions.texture_prompt.length }}/600 字符</div>
+        </div>
+
+        <!-- 参考图片上传 - 图片参考模式 -->
+        <div v-if="textureOptions.texture_input_type === 'image_reference'" class="form-group">
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <span class="flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              参考图片 *
+            </span>
+          </label>
+          
+          <!-- 图片上传区域 -->
+          <div class="relative">
+            <input
+              type="file"
+              ref="imageInput"
+              @change="handleImageUpload"
+              accept="image/*"
+              class="hidden"
+            />
+            
+            <!-- 上传按钮或预览区域 -->
+            <div v-if="!textureOptions.reference_image" 
+                 @click="$refs.imageInput?.click()"
+                 class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
+              <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">点击上传参考图片</p>
+              <p class="text-xs text-gray-500">支持 JPG、PNG、WebP 格式，最大 10MB</p>
+            </div>
+            
+            <!-- 图片预览 -->
+            <div v-else class="relative">
+              <img :src="textureOptions.reference_image" alt="参考图片" class="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600" />
+              <button
+                type="button"
+                @click="removeImage"
+                class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 图片描述 -->
+          <div class="mt-3">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">图片描述（可选）</label>
+            <input
+              type="text"
+              v-model="textureOptions.image_description"
+              placeholder="描述这张图片的纹理特征，帮助AI更好地理解"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
         </div>
 
         <!-- 纹理类型 -->
@@ -246,7 +324,10 @@ interface Props {
     input_source: string
     task_id: string
     model_url: string
+    texture_input_type: string
     texture_prompt: string
+    reference_image: string
+    image_description: string
     texture_type: string
     resolution: string
     quality: string
@@ -255,7 +336,9 @@ interface Props {
     generate_normal: boolean
   }
   availableTasks?: Task[]
+  currentModel?: string
   isProcessing?: boolean
+  selectedItem?: any
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -263,7 +346,10 @@ const props = withDefaults(defineProps<Props>(), {
     input_source: 'existing_task',
     task_id: '',
     model_url: '',
+    texture_input_type: 'text_prompt',
     texture_prompt: '',
+    reference_image: '',
+    image_description: '',
     texture_type: 'diffuse',
     resolution: '1024',
     quality: 'standard',
@@ -272,7 +358,9 @@ const props = withDefaults(defineProps<Props>(), {
     generate_normal: false
   }),
   availableTasks: () => [],
-  isProcessing: false
+  currentModel: '',
+  isProcessing: false,
+  selectedItem: null
 })
 
 // Emits
@@ -285,17 +373,66 @@ const emit = defineEmits<{
 // Local state
 const textureOptions = reactive({ ...props.textureOptions })
 const showAdvancedOptions = ref(false)
+const imageInput = ref<HTMLInputElement>()
 
 // Computed
 const isFormValid = computed(() => {
+  // 如果有选中的模型，则不需要检查输入源
+  if (props.currentModel) {
+    if (textureOptions.texture_input_type === 'text_prompt') {
+      return textureOptions.texture_prompt.trim() !== ''
+    } else if (textureOptions.texture_input_type === 'image_reference') {
+      return textureOptions.reference_image !== ''
+    }
+  }
+  
+  // 如果没有选中模型，需要检查输入源
   const hasValidInput = textureOptions.input_source === 'existing_task' 
     ? textureOptions.task_id !== ''
     : textureOptions.model_url.trim() !== ''
   
-  return hasValidInput && textureOptions.texture_prompt.trim() !== ''
+  const hasValidTexture = textureOptions.texture_input_type === 'text_prompt'
+    ? textureOptions.texture_prompt.trim() !== ''
+    : textureOptions.reference_image !== ''
+  
+  return hasValidInput && hasValidTexture
 })
 
 // Methods
+const handleImageUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (file) {
+    // 检查文件大小 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('图片文件大小不能超过 10MB')
+      return
+    }
+    
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      alert('请选择有效的图片文件')
+      return
+    }
+    
+    // 创建 FileReader 来读取文件
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      textureOptions.reference_image = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+const removeImage = () => {
+  textureOptions.reference_image = ''
+  textureOptions.image_description = ''
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
 const handleSubmit = () => {
   emit('update:textureOptions', textureOptions)
   emit('generate-texture')

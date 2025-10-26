@@ -85,6 +85,8 @@
           :current-model="currentModel"
           :model-info="modelInfo"
           :is-processing="isProcessing"
+          :available-tasks="availableTasks"
+          :selected-item="selectedItem"
           @update:retopology-options="$emit('update:retopologyOptions', $event)"
           @start-retopology="$emit('start-retopology')"
           @processing-completed="$emit('processing-completed')"
@@ -94,7 +96,10 @@
         <Texture
           v-if="activeMainMenu === 'texture'"
           :texture-options="textureOptions"
+          :current-model="currentModel"
           :is-processing="isProcessing"
+          :available-tasks="availableTasks"
+          :selected-item="selectedItem"
           @update:texture-options="$emit('update:textureOptions', $event)"
           @generate-texture="$emit('generate-texture')"
           @generation-completed="$emit('generation-completed')"
@@ -176,10 +181,14 @@ interface Props {
   isProcessing: boolean
   generationProgress: number
   generationStatus: string
+  availableTasks?: any[]
+  selectedItem?: any
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  activeMainMenu: 'model'
+  selectedImage: '',
+  availableTasks: () => [],
+  selectedItem: null
 })
 
 // Emits

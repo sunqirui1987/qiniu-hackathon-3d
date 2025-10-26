@@ -203,7 +203,7 @@ export class MeshyClient {
     if (options.origin_at) requestBody.origin_at = options.origin_at
     if (options.convert_format_only !== undefined) requestBody.convert_format_only = options.convert_format_only
 
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/remesh', requestBody)
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/remesh', requestBody)
     return response.data
   }
 
@@ -218,7 +218,7 @@ export class MeshyClient {
     if (options.enable_original_uv !== undefined) requestBody.enable_original_uv = options.enable_original_uv
     if (options.enable_pbr !== undefined) requestBody.enable_pbr = options.enable_pbr
 
-    const response = await this.client.post<MeshyTaskResponse>('/openapi/v2/retexture', requestBody)
+    const response = await this.client.post<MeshyTaskResponse>('/openapi/v1/retexture', requestBody)
     return response.data
   }
 
@@ -230,11 +230,11 @@ export class MeshyClient {
 
     let endpoint = `/openapi/v2/text-to-3d/${taskId}`
     if (taskType === 'image-to-3d') {
-      endpoint = `/openapi/v2/image-to-3d/${taskId}`
+      endpoint = `/openapi/v1/image-to-3d/${taskId}`
     } else if (taskType === 'remesh') {
-      endpoint = `/openapi/v2/remesh/${taskId}`
+      endpoint = `/openapi/v1/remesh/${taskId}`
     } else if (taskType === 'retexture') {
-      endpoint = `/openapi/v2/retexture/${taskId}`
+      endpoint = `/openapi/v1/retexture/${taskId}`
     }
 
     const response = await this.client.get<MeshyTaskStatus>(endpoint)

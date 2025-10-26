@@ -3,6 +3,7 @@
     <!-- 左侧Tab面板组件 -->
     <LeftTabPanel
       :active-tab="activeTab"
+      :active-main-menu="activeMainMenu"
       :text-prompt="textPrompt"
       :text-options="textOptions"
       :image-options="imageOptions"
@@ -16,7 +17,10 @@
       :generation-progress="generationProgress"
       :generation-status="generationStatus"
       :selected-image="selectedImage"
+      :available-tasks="availableTasks"
+      :selected-item="selectedItem"
       @tab-change="activeTab = $event"
+      @main-menu-change="activeMainMenu = $event"
       @update:text-prompt="textPrompt = $event"
       @update:text-options="textOptions = $event"
       @update:image-options="imageOptions = $event"
@@ -34,6 +38,7 @@
     <CenterViewer
       :current-model="currentModel"
       :model-info="modelInfo"
+      :selected-item="selectedItem"
       @update:current-model="currentModel = $event"
       @update:model-info="modelInfo = $event"
       @model-imported="handleModelImported"
@@ -48,6 +53,7 @@
       :active-category="historyCategory"
       :text-to-3d-tasks="textTo3DTasks"
       :image-to-3d-tasks="imageTo3DTasks"
+      :selected-item-id="selectedItem?.id || ''"
       @category-change="historyCategory = $event"
       @load-history-item="loadHistoryItem"
       @delete-history-item="deleteHistoryItem"
@@ -96,8 +102,10 @@ const { generateFromImage, isGenerating: imageGenerating, progress: imageProgres
 
 // 响应式数据
 const activeTab = ref('text-to-3d')
+const activeMainMenu = ref('model')
 const currentModel = ref<string>('')
 const historyCategory = ref('all')
+const selectedItem = ref<any>(null) // 新增：当前选中的历史项目对象
 
 // Meshy API 任务列表
 const textTo3DTasks = ref([])
@@ -126,16 +134,29 @@ const imageOptions = reactive({
 
 // 重拓扑相关
 const retopologyOptions = reactive({
-  targetFaces: 10000,
-  preserveUV: true,
-  preserveSharp: false
+  input_source: 'existing_task',
+  task_id: '',
+  model_url: '',
+  topology: 'triangle',
+  target_polycount: 30000,
+  quality: 'medium',
+  preserve_boundaries: true,
+  preserve_uv: false
 })
 
 // 贴图生成相关
 const texturePrompt = ref('')
 const textureOptions = reactive({
-  type: 'diffuse',
-  resolution: '1024'
+  input_source: 'existing_task',
+  task_id: '',
+  model_url: '',
+  texture_prompt: '',
+  texture_type: 'diffuse',
+  resolution: '1024',
+  quality: 'standard',
+  seamless: false,
+  preserve_uv: true,
+  generate_normal: false
 })
 
 // 模型信息
@@ -168,6 +189,16 @@ const generationStatus = computed(() => {
   if (activeTab.value === 'text-to-3d') return textStatus.value
   if (activeTab.value === 'image-to-3d') return imageStatus.value
   return ''
+})
+
+// 合并所有可用任务供重拓扑和贴图使用
+const availableTasks = computed(() => {
+  const allTasks = [...textTo3DTasks.value, ...imageTo3DTasks.value]
+  return allTasks.map(task => ({
+    id: task.id,
+    name: task.prompt || task.name || `任务 ${task.id}`,
+    created_at: new Date(task.created_at).toLocaleDateString()
+  }))
 })
 
 // 方法
@@ -314,6 +345,9 @@ const handleViewerError = (error: string) => {
 }
 
 const loadHistoryItem = async (item: any) => {
+  // 设置选中的项目对象
+  selectedItem.value = item
+  
   // 处理Meshy API格式的模型URL
   let modelUrl = ''
   
@@ -342,6 +376,11 @@ const loadHistoryItem = async (item: any) => {
 }
 
 const deleteHistoryItem = (itemId: string) => {
+  // 如果删除的是当前选中的项目，清除选中状态
+  if (selectedItem.value?.id === itemId) {
+    selectedItem.value = null
+  }
+  
   // 从文本生成任务中删除
   const textIndex = textTo3DTasks.value.findIndex(h => h.id === itemId)
   if (textIndex > -1) {
@@ -364,6 +403,7 @@ const deleteHistoryItem = (itemId: string) => {
 const clearHistory = () => {
   textTo3DTasks.value = []
   imageTo3DTasks.value = []
+  selectedItemId.value = '' // 清除选中状态
   showNotification('历史记录已清空', 'success')
 }
 

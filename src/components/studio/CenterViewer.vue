@@ -4,6 +4,16 @@
     <div class="viewer-toolbar dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
+          <!-- 选中模型信息 -->
+          <div v-if="selectedItem" class="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <span class="text-sm font-medium text-blue-900 dark:text-blue-100">
+              已选择模型【{{ selectedItem.id }}】
+            </span>
+          </div>
+          
           <div class="flex items-center gap-2">
             <span class="text-sm text-gray-600 dark:text-gray-400">视图:</span>
             <select 
@@ -122,6 +132,7 @@ interface Props {
     vertices: number
     fileSize: string
   }
+  selectedItem?: any
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -130,7 +141,8 @@ const props = withDefaults(defineProps<Props>(), {
     faces: 0,
     vertices: 0,
     fileSize: ''
-  })
+  }),
+  selectedItem: null
 })
 
 // Emits

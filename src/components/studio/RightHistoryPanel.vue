@@ -48,7 +48,12 @@
           v-for="item in displayHistory"
           :key="item.id"
           @click="$emit('load-history-item', item)"
-          class="history-item group relative bg-gray-800 rounded-lg overflow-hidden cursor-pointer transition-all hover:ring-2 hover:ring-blue-500 hover:ring-opacity-50"
+          :class="[
+            'history-item group relative rounded-lg overflow-hidden cursor-pointer transition-all',
+            selectedItemId === item.id
+              ? 'bg-blue-600 ring-2 ring-blue-400 ring-opacity-75 shadow-lg'
+              : 'bg-gray-800 hover:ring-2 hover:ring-blue-500 hover:ring-opacity-50'
+          ]"
         >
           <!-- 缩略图 -->
           <div class="aspect-square bg-gray-700 relative">
@@ -93,11 +98,20 @@
           </div>
 
           <!-- 底部信息（可选，简化版） -->
-          <div class="p-2 bg-gray-800">
-            <p class="text-xs text-gray-300 truncate" :title="getTaskName(item)">
+          <div :class="[
+            'p-2',
+            selectedItemId === item.id ? 'bg-blue-600' : 'bg-gray-800'
+          ]">
+            <p :class="[
+              'text-xs truncate',
+              selectedItemId === item.id ? 'text-blue-100' : 'text-gray-300'
+            ]" :title="getTaskName(item)">
               {{ getTaskName(item) }}
             </p>
-            <p class="text-xs text-gray-500">{{ formatDate(item.created_at) }}</p>
+            <p :class="[
+              'text-xs',
+              selectedItemId === item.id ? 'text-blue-200' : 'text-gray-500'
+            ]">{{ formatDate(item.created_at) }}</p>
           </div>
         </div>
       </div>
@@ -145,6 +159,7 @@ interface Props {
   activeCategory: string
   textTo3dTasks?: HistoryItem[]
   imageTo3dTasks?: HistoryItem[]
+  selectedItemId?: string // 新增：当前选中的项目ID
 }
 
 const props = defineProps<Props>()
