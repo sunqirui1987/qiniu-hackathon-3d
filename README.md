@@ -29,6 +29,9 @@
 ![3D查看器](./docs/screen/img3.png)
 *3D查看器 - 基于Babylon.js的高性能渲染*
 
+![更多界面](./docs/screen/img4.png)
+*更多界面截图*
+
 </div>
 
 ### 功能演示视频

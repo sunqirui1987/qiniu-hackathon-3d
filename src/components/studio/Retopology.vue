@@ -88,7 +88,7 @@
         <!-- 目标多边形数量 -->
         <div class="form-group">
           <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            目标多边形数量: {{ retopologyOptions.target_polycount.toLocaleString() }}
+            目标多边形数量: {{ (retopologyOptions.target_polycount || 30000).toLocaleString() }}
           </label>
           <input
             type="range"
