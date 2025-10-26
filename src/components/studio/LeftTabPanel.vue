@@ -99,7 +99,7 @@
           :available-tasks="availableTasks"
           :selected-item="selectedItem"
           @update:texture-options="$emit('update:textureOptions', $event)"
-          @generate-texture="$emit('generate-texture')"
+          @generate-texture="(prompt, options) => $emit('generate-texture', prompt, options)"
           @generation-completed="$emit('generation-completed')"
         />
       </div>

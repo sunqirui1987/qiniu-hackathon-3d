@@ -87,7 +87,7 @@ import LeftTabPanel from '@/components/studio/LeftTabPanel.vue'
 import CenterViewer from '@/components/studio/CenterViewer.vue'
 import RightHistoryPanel from '@/components/studio/RightHistoryPanel.vue'
 import { useTextTo3D } from '@/composables/useTextTo3D'
-import type { SelectedItem, RetopologyOptions, RemeshOptions } from '@/types/model'
+import type { SelectedItem, RetopologyOptions, TextureOptions } from '@/types/model'
 import { useImageTo3D } from '@/composables/useImageTo3D'
 import { meshyClient } from '@/utils/meshyClient'
 
@@ -321,8 +321,8 @@ const handleRetopology = async (options: RetopologyOptions) => {
   
   isProcessing.value = true
   try {
-    // 构造重拓扑参数，符合 RemeshOptions 接口
-    const remeshOptions: RemeshOptions = {
+    // 构造重拓扑参数，符合 RetopologyOptions 接口
+    const remeshOptions: RetopologyOptions = {
       // 优先使用 task_id，其次使用 selectedItem.id，最后使用 model_url
       input_task_id: hasTaskId ? options.task_id : (hasSelectedItem ? selectedItem.value!.id : undefined),
       model_url: hasModelUrl ? options.model_url : undefined,
@@ -379,23 +379,75 @@ const handleRetopology = async (options: RetopologyOptions) => {
   }
 }
 
-const handleTextureGeneration = async (prompt: string, options: any) => {
-  if (!selectedItem.value?.url && !options.task_id && !options.model_url) {
+const handleTextureGeneration = async (prompt: string, options: TextureOptions) => {
+  // 验证输入参数
+  if (!options) {
+    showNotification('贴图生成参数无效', 'error')
+    return
+  }
+
+  // 检查是否有有效的输入源
+  const hasTaskId = options.task_id && options.task_id.trim() !== ''
+  const hasModelUrl = options.model_url && options.model_url.trim() !== ''
+  const hasSelectedItem = selectedItem.value?.id
+
+  if (!hasTaskId && !hasModelUrl && !hasSelectedItem) {
     showNotification('请先选择一个模型或任务', 'error')
     return
   }
   
   isProcessing.value = true
   try {
+    // 根据纹理输入类型决定使用文字提示还是图片
+    let textStylePrompt: string | undefined = undefined
+    let imageStyleUrl: string | undefined = undefined
+
+    if (options.texture_input_type === 'text_prompt') {
+      // 使用文字描述
+      textStylePrompt = prompt || options.texture_prompt || ''
+      if (!textStylePrompt.trim()) {
+        throw new Error('使用文字描述模式时，必须提供纹理描述')
+      }
+    } else if (options.texture_input_type === 'reference_image') {
+      // 使用参考图片
+      if (!options.reference_image) {
+        throw new Error('使用图片参考模式时，必须上传参考图片')
+      }
+      
+      // 确保 reference_image 是正确的 Data URI 格式
+      if (!options.reference_image.startsWith('data:image/')) {
+        throw new Error('参考图片必须是有效的 Data URI 格式')
+      }
+      
+      imageStyleUrl = options.reference_image
+    } else {
+      throw new Error('必须选择纹理输入方式：文字描述或参考图片')
+    }
+
     // 构造贴图生成参数
     const retextureOptions = {
-      input_task_id: options.task_id || undefined,
-      model_url: options.model_url || undefined,
-      text_style_prompt: prompt || options.texture_prompt,
-      image_style_url: options.image_style_url || undefined,
+      // 优先使用 task_id，其次使用 selectedItem.id，最后使用 model_url
+      input_task_id: hasTaskId ? options.task_id : (hasSelectedItem ? selectedItem.value!.id : undefined),
+      model_url: hasModelUrl ? options.model_url : undefined,
+      text_style_prompt: textStylePrompt,
+      image_style_url: imageStyleUrl,
       ai_model: options.ai_model || 'meshy-4',
       enable_original_uv: options.enable_original_uv !== false,
       enable_pbr: options.enable_pbr !== false
+    }
+
+    // 验证必需参数
+    if (!retextureOptions.input_task_id && !retextureOptions.model_url) {
+      throw new Error('必须提供 input_task_id 或 model_url 中的一个')
+    }
+
+    // 验证 text_style_prompt 和 image_style_url 互斥
+    if (!retextureOptions.text_style_prompt && !retextureOptions.image_style_url) {
+      throw new Error('必须提供 text_style_prompt 或 image_style_url 中的一个')
+    }
+
+    if (retextureOptions.text_style_prompt && retextureOptions.image_style_url) {
+      throw new Error('text_style_prompt 和 image_style_url 不能同时提供')
     }
 
     console.log('开始贴图生成:', retextureOptions)

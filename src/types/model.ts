@@ -118,23 +118,9 @@ export interface SelectedItem {
   type?: string
 }
 
-// 重拓扑 API 相关类型定义
-export interface RemeshOptions {
-  // 必需属性（二选一）
-  input_task_id?: string  // 需要重建网格的已完成任务ID
-  model_url?: string      // 3D模型的公开访问URL
-
-  // 可选属性
-  target_formats?: Array<'glb' | 'fbx' | 'obj' | 'usdz' | 'blend' | 'stl'>  // 目标格式
-  topology?: 'quad' | 'triangle'  // 拓扑结构
-  target_polycount?: number       // 目标面数 (100-300000)
-  resize_height?: number          // 缩放高度（米）
-  origin_at?: 'bottom' | 'center' // 原点位置
-  convert_format_only?: boolean   // 是否仅转换格式
-}
-
-// 重拓扑组件选项类型
+// 重拓扑选项类型（统一组件和API使用）
 export interface RetopologyOptions {
+  // 组件相关字段
   input_source: 'existing_task' | 'upload_model'
   task_id: string
   model_url: string
@@ -143,9 +129,13 @@ export interface RetopologyOptions {
   quality: 'low' | 'medium' | 'high'
   preserve_boundaries: boolean
   preserve_uv: boolean
-  resize_height?: number
-  origin_at?: 'bottom' | 'center'
-  convert_format_only?: boolean
+  
+  // API 相关字段（可选）
+  input_task_id?: string  // 需要重建网格的已完成任务ID（API使用）
+  target_formats?: Array<'glb' | 'fbx' | 'obj' | 'usdz' | 'blend' | 'stl'>  // 目标格式
+  resize_height?: number          // 缩放高度（米）
+  origin_at?: 'bottom' | 'center' // 原点位置
+  convert_format_only?: boolean   // 是否仅转换格式
 }
 
 // 贴图生成 API 相关类型定义
@@ -167,7 +157,10 @@ export interface TextureOptions {
   input_source: 'existing_task' | 'upload_model'
   task_id: string
   model_url: string
+  texture_input_type: 'text_prompt' | 'reference_image'
   texture_prompt: string
+  reference_image: string
+  image_description: string
   texture_type: 'diffuse' | 'normal' | 'roughness' | 'metallic'
   resolution: '512' | '1024' | '2048'
   quality: 'standard' | 'high'
