@@ -134,7 +134,7 @@
               </label>
               <input
                 type="range"
-                v-model="textOptions.target_polycount"
+                v-model.number="textOptions.target_polycount"
                 min="100"
                 max="300000"
                 step="1000"
@@ -172,10 +172,10 @@
         <!-- 生成按钮 -->
         <button
           type="submit"
-          :disabled="!textPrompt.trim() || isLoading || props.isGenerating"
+          :disabled="!textPrompt.trim() || isLoading"
           class="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
         >
-          <span v-if="isLoading || props.isGenerating" class="flex items-center justify-center gap-2">
+          <span v-if="isLoading" class="flex items-center justify-center gap-2">
             <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -281,7 +281,6 @@ interface Props {
     should_remesh: boolean
     is_a_t_pose: boolean
   }
-  isGenerating?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -293,8 +292,7 @@ const props = withDefaults(defineProps<Props>(), {
     target_polycount: 30000,
     should_remesh: false,
     is_a_t_pose: false
-  }),
-  isGenerating: false
+  })
 })
 
 // Emits
@@ -316,6 +314,11 @@ const showAdvancedOptions = ref(false)
 const handleSubmit = () => {
   // 立即设置loading状态，防止重复点击
   isLoading.value = true
+  
+  // 2秒后重置loading状态，允许再次提交
+  setTimeout(() => {
+    isLoading.value = false
+  }, 2000)
   
   emit('update:textPrompt', textPrompt.value)
   emit('update:textOptions', textOptions)
@@ -358,13 +361,6 @@ watch(() => props.textPrompt, (newVal) => {
 watch(() => props.textOptions, (newVal) => {
   Object.assign(textOptions, newVal)
 }, { deep: true })
-
-watch(() => props.isGenerating, (newVal) => {
-  // 当外部isGenerating状态变化时，重置本地loading状态
-  if (newVal) {
-    isLoading.value = false
-  }
-})
 </script>
 
 <style scoped>

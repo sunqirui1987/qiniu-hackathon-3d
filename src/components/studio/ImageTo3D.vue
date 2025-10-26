@@ -122,7 +122,7 @@
               </label>
               <input
                 type="range"
-                v-model="imageOptions.target_polycount"
+                v-model.number="imageOptions.target_polycount"
                 min="100"
                 max="300000"
                 step="1000"
@@ -151,15 +151,15 @@
         <!-- 生成按钮 -->
         <button
           type="submit"
-          :disabled="!selectedImage || props.isGenerating || isSubmitting"
+          :disabled="!selectedImage || isSubmitting"
           class="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
         >
-          <span v-if="props.isGenerating || isSubmitting" class="flex items-center justify-center gap-2">
+          <span v-if="isSubmitting" class="flex items-center justify-center gap-2">
             <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ isSubmitting ? '提交中...' : '生成中...' }}
+            提交中...
           </span>
           <span v-else class="flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,7 +189,6 @@ interface Props {
     should_remesh: boolean
     is_a_t_pose: boolean
   }
-  isGenerating?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -203,8 +202,7 @@ const props = withDefaults(defineProps<Props>(), {
     target_polycount: 30000,
     should_remesh: true,
     is_a_t_pose: false
-  }),
-  isGenerating: false
+  })
 })
 
 // Emits
@@ -234,11 +232,6 @@ const handleSubmit = () => {
     return
   }
   
-  // 检查是否已经在生成中
-  if (props.isGenerating || isSubmitting.value) {
-    return
-  }
-  
   // 设置提交状态
   isSubmitting.value = true
   lastSubmitTime.value = now
@@ -246,7 +239,7 @@ const handleSubmit = () => {
   // 延迟重置提交状态，给用户视觉反馈
   setTimeout(() => {
     isSubmitting.value = false
-  }, 1000)
+  }, 2000)
   
   emit('update:selectedImage', selectedImage.value)
   emit('update:imageOptions', imageOptions)
@@ -307,11 +300,4 @@ watch(() => props.selectedImage, (newVal) => {
 watch(() => props.imageOptions, (newVal) => {
   Object.assign(imageOptions, newVal)
 }, { deep: true })
-
-watch(() => props.isGenerating, (newVal) => {
-  // 当外部isGenerating状态变化时，重置本地提交状态
-  if (newVal) {
-    isSubmitting.value = false
-  }
-})
 </script>

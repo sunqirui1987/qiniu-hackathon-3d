@@ -92,7 +92,7 @@
           </label>
           <input
             type="range"
-            v-model="retopologyOptions.target_polycount"
+            v-model.number="retopologyOptions.target_polycount"
             min="100"
             max="300000"
             step="1000"
@@ -156,10 +156,10 @@
         <!-- 生成按钮 -->
         <button
           type="submit"
-          :disabled="!isFormValid || props.isProcessing"
+          :disabled="!isFormValid || isSubmitting"
           class="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
         >
-          <span v-if="props.isProcessing" class="flex items-center justify-center gap-2">
+          <span v-if="isSubmitting" class="flex items-center justify-center gap-2">
             <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -192,7 +192,6 @@ interface Task {
 interface Props {
   retopologyOptions?: RetopologyOptions
   availableTasks?: Task[]
-  isProcessing?: boolean
   selectedItem?: SelectedItem
 }
 
@@ -208,7 +207,6 @@ const props = withDefaults(defineProps<Props>(), {
     preserve_uv: false
   }),
   availableTasks: () => [],
-  isProcessing: false,
   selectedItem: null
 })
 
@@ -222,6 +220,7 @@ const emit = defineEmits<{
 // Local state
 const retopologyOptions = reactive<RetopologyOptions>({ ...props.retopologyOptions })
 const showAdvancedOptions = ref(false)
+const isSubmitting = ref(false)
 
 // Computed
 const isFormValid = computed(() => {
@@ -241,6 +240,18 @@ const isFormValid = computed(() => {
 
 // Methods
 const handleSubmit = () => {
+  // 防止重复提交
+  if (isSubmitting.value) {
+    return
+  }
+  
+  isSubmitting.value = true
+  
+  // 2秒后重置提交状态，允许再次提交
+  setTimeout(() => {
+    isSubmitting.value = false
+  }, 2000)
+  
   // 如果有选中的模型，使用选中模型的ID作为input_task_id
   if (props.selectedItem?.id) {
     retopologyOptions.task_id = props.selectedItem.id

@@ -251,7 +251,7 @@ const handleTextTo3D = async (prompt: string, options: any) => {
       artStyle: options.art_style,
       aiModel: options.ai_model,
       topology: options.topology,
-      targetPolycount: parseInt(options.target_polycount),
+      targetPolycount: options.target_polycount || 30000,
       shouldRemesh: options.should_remesh,
       isATPose: options.is_a_t_pose,
       symmetryMode: 'auto',
