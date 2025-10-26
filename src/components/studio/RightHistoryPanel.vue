@@ -152,13 +152,14 @@ interface HistoryItem {
     message: string
   }
   type?: 'text-to-3d' | 'image-to-3d'
+  hasTexture?: boolean
+  taskType?: string
 }
 
 // Props
 interface Props {
   activeCategory: string
-  textTo3dTasks?: HistoryItem[]
-  imageTo3dTasks?: HistoryItem[]
+  allTasks?: HistoryItem[]
   selectedItemId?: string // 新增：当前选中的项目ID
 }
 
@@ -178,20 +179,24 @@ let refreshTimer: NodeJS.Timeout | null = null
 // 分类配置
 const categories = [
   { id: 'all', name: '全部' },
-  { id: 'text-to-3d', name: '白模' },
-  { id: 'image-to-3d', name: '纹理' }
+  { id: 'white-model', name: '白模' },
+  { id: 'textured-model', name: '纹理模型' }
 ]
 
-// 计算属性 - 简化版，直接显示所有数据
+// 计算属性 - 简化版，根据任务类型和纹理状态分类
 const displayHistory = computed(() => {
+  const tasks = props.allTasks || []
+  
   switch (props.activeCategory) {
-    case 'text-to-3d':
-      return props.textTo3dTasks || []
-    case 'image-to-3d':
-      return props.imageTo3dTasks || []
+    case 'white-model':
+      // 显示白模（无纹理的模型）
+      return tasks.filter(task => !task.hasTexture)
+    case 'textured-model':
+      // 显示有纹理的模型
+      return tasks.filter(task => task.hasTexture)
     case 'all':
     default:
-      return [...(props.textTo3dTasks || []), ...(props.imageTo3dTasks || [])]
+      return tasks
   }
 })
 
@@ -263,7 +268,19 @@ const getTaskName = (item: HistoryItem) => {
   if (item.prompt) {
     return item.prompt.length > 20 ? item.prompt.slice(0, 20) + '...' : item.prompt
   }
-  return item.type === 'text-to-3d' ? '文生3D任务' : '图生3D任务'
+  
+  // 根据任务类型和纹理状态显示名称
+  if (item.taskType === 'text-to-3d') {
+    return '文生3D任务'
+  } else if (item.taskType === 'image-to-3d') {
+    return '图生3D任务'
+  } else if (item.taskType === 'remesh') {
+    return '重新网格化'
+  } else if (item.taskType === 'retexture') {
+    return '重新纹理化'
+  }
+  
+  return item.hasTexture ? '纹理模型' : '白模'
 }
 
 // 网格布局专用方法

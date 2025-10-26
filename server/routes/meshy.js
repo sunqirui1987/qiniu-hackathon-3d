@@ -285,6 +285,105 @@ router.get('/proxy-asset/:filename', (req, res, next) => {
   }
 })
 
+
+// 获取所有任务的聚合接口
+router.get('/tasks/all', async (req, res, next) => {
+  console.log('[Meshy] Getting all tasks list')
+  
+  try {
+    const { page_size = 10 } = req.query
+    const pageSize = Math.floor(parseInt(page_size) / 4) || 3 // 平均分配给四种任务类型
+    
+    console.log('[Meshy] Requesting all task types with page_size:', pageSize)
+    
+    // 并发请求所有四种任务类型
+    const [textTo3dResponse, imageTo3dResponse, remeshResponse, retextureResponse] = await Promise.allSettled([
+      meshyClient.get('/openapi/v2/text-to-3d', { params: { page_size: pageSize } }),
+      meshyClient.get('/openapi/v1/image-to-3d', { params: { page_size: pageSize } }),
+      meshyClient.get('/openapi/v1/remesh', { params: { page_size: pageSize } }),
+      meshyClient.get('/openapi/v1/retexture', { params: { page_size: pageSize } })
+    ])
+    
+    const allTasks = []
+    
+    // 处理 text-to-3d 任务
+    if (textTo3dResponse.status === 'fulfilled') {
+      const textTo3dTasks = textTo3dResponse.value.data.map(task => ({
+        ...task,
+        hasTexture: task.texture_urls && task.texture_urls.length > 0,
+        taskType: 'text-to-3d'
+      }))
+      allTasks.push(...textTo3dTasks)
+      console.log('[Meshy] Added', textTo3dTasks.length, 'text-to-3d tasks')
+    } else {
+      console.error('[Meshy] Failed to get text-to-3d tasks:', textTo3dResponse.reason?.message)
+    }
+    
+    // 处理 image-to-3d 任务
+    if (imageTo3dResponse.status === 'fulfilled') {
+      const imageTo3dTasks = imageTo3dResponse.value.data.map(task => ({
+        ...task,
+        hasTexture: task.texture_urls && task.texture_urls.length > 0,
+        taskType: 'image-to-3d'
+      }))
+      allTasks.push(...imageTo3dTasks)
+      console.log('[Meshy] Added', imageTo3dTasks.length, 'image-to-3d tasks')
+    } else {
+      console.error('[Meshy] Failed to get image-to-3d tasks:', imageTo3dResponse.reason?.message)
+    }
+    
+    // 处理 remesh 任务
+    if (remeshResponse.status === 'fulfilled') {
+      const remeshTasks = remeshResponse.value.data.map(task => ({
+        ...task,
+        hasTexture: false,
+        taskType: 'remesh'
+      }))
+      allTasks.push(...remeshTasks)
+      console.log('[Meshy] Added', remeshTasks.length, 'remesh tasks')
+    } else {
+      console.error('[Meshy] Failed to get remesh tasks:', remeshResponse.reason?.message)
+    }
+    
+    // 处理 retexture 任务
+    if (retextureResponse.status === 'fulfilled') {
+      const retextureTasks = retextureResponse.value.data.map(task => ({
+        ...task,
+        hasTexture: task.texture_urls && task.texture_urls.length > 0,
+        taskType: 'retexture'
+      }))
+      allTasks.push(...retextureTasks)
+      console.log('[Meshy] Added', retextureTasks.length, 'retexture tasks')
+    } else {
+      console.error('[Meshy] Failed to get retexture tasks:', retextureResponse.reason?.message)
+    }
+    
+    // 按创建时间排序（最新的在前）
+    allTasks.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    
+    // 限制返回数量
+    const limitedTasks = allTasks.slice(0, parseInt(page_size))
+    
+    console.log('[Meshy] Returning', limitedTasks.length, 'total tasks')
+    
+    res.json({
+      tasks: limitedTasks,
+      total: limitedTasks.length,
+      summary: {
+        textTo3d: allTasks.filter(t => t.taskType === 'text-to-3d').length,
+        imageTo3d: allTasks.filter(t => t.taskType === 'image-to-3d').length,
+        remesh: allTasks.filter(t => t.taskType === 'remesh').length,
+        retexture: allTasks.filter(t => t.taskType === 'retexture').length,
+        withTexture: allTasks.filter(t => t.hasTexture).length,
+        withoutTexture: allTasks.filter(t => !t.hasTexture).length
+      }
+    })
+  } catch (error) {
+    console.error('[Meshy] Failed to get all tasks:', error.message)
+    next(error)
+  }
+})
+
 router.all('/*', requireAuth, async (req, res, next) => {
   console.log('[Meshy] Proxying request:', req.method, req.originalUrl)
   console.log('[Meshy] Request path:', req.path)

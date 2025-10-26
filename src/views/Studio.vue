@@ -49,8 +49,7 @@
     <!-- 右侧历史面板组件 -->
     <RightHistoryPanel
       :active-category="historyCategory"
-      :text-to-3d-tasks="textTo3DTasks"
-      :image-to-3d-tasks="imageTo3DTasks"
+      :all-tasks="allHistoryTasks"
       :selected-item-id="selectedItem?.id || ''"
       @category-change="historyCategory = $event"
       @load-history-item="loadHistoryItem"
@@ -108,6 +107,7 @@ const selectedItem = ref<SelectedItem | null>(null) // 当前选中的历史项�
 // Meshy API 任务列表
 const textTo3DTasks = ref([])
 const imageTo3DTasks = ref([])
+const allHistoryTasks = ref([])
 const isLoadingHistory = ref(false)
 
 // 文本生成相关
@@ -203,25 +203,37 @@ const availableTasks = computed(() => {
 const loadHistoryData = async () => {
   isLoadingHistory.value = true
   try {
-    const [textTasks, imageTasks] = await Promise.all([
-      meshyClient.getTextTo3DTasks(),
-      meshyClient.getImageTo3DTasks()
-    ])
+    const allTasks = await meshyClient.getAllTasks()
     
     console.log('🚀 Studio.vue - 原始API数据:')
-    console.log('textTasks from API:', textTasks)
-    console.log('imageTasks from API:', imageTasks)
+    console.log('allTasks from API:', allTasks)
     
-    // 为任务添加类型标识
-    textTo3DTasks.value = textTasks.map(task => ({ ...task, type: 'text-to-3d' }))
-    imageTo3DTasks.value = imageTasks.map(task => ({ ...task, type: 'image-to-3d' }))
+    // 合并所有任务到一个数组中
+    const combinedTasks = [
+      ...allTasks.textTo3D.map(task => ({ ...task, type: 'text-to-3d' })),
+      ...allTasks.imageTo3D.map(task => ({ ...task, type: 'image-to-3d' })),
+      ...(allTasks.remesh || []).map(task => ({ ...task, type: 'remesh' })),
+      ...(allTasks.retexture || []).map(task => ({ ...task, type: 'retexture' }))
+    ]
+    
+    // 按创建时间排序（最新的在前）
+    allHistoryTasks.value = combinedTasks.sort((a, b) => b.created_at - a.created_at)
+    
+    // 保持原有的分类数据（为了兼容性）
+    textTo3DTasks.value = allTasks.textTo3D.map(task => ({ ...task, type: 'text-to-3d' }))
+    imageTo3DTasks.value = allTasks.imageTo3D.map(task => ({ ...task, type: 'image-to-3d' }))
     
     console.log('🎯 Studio.vue - 处理后的数据:')
-    console.log('textTo3DTasks.value:', textTo3DTasks.value)
-    console.log('imageTo3DTasks.value:', imageTo3DTasks.value)
+    console.log('allHistoryTasks.value:', allHistoryTasks.value)
     console.log('historyCategory.value:', historyCategory.value)
     
-    console.log('历史数据加载成功:', { textTasks: textTasks.length, imageTasks: imageTasks.length })
+    console.log('历史数据加载成功:', { 
+      totalTasks: allHistoryTasks.value.length,
+      textTasks: allTasks.textTo3D.length, 
+      imageTasks: allTasks.imageTo3D.length,
+      remeshTasks: allTasks.remesh?.length || 0,
+      retextureTasks: allTasks.retexture?.length || 0
+    })
   } catch (error) {
     console.error('加载历史数据失败:', error)
     showNotification('加载历史数据失败', 'error')
@@ -461,31 +473,32 @@ const loadHistoryItem = (item: any) => {
 }
 
 const deleteHistoryItem = (itemId: string) => {
-  // 如果删除的是当前选中的项目，清除选中状态
-  if (selectedItem.value?.id === itemId) {
-    selectedItem.value = null
+  // 从统一的历史任务列表中删除
+  const allIndex = allHistoryTasks.value.findIndex(h => h.id === itemId)
+  if (allIndex > -1) {
+    allHistoryTasks.value.splice(allIndex, 1)
+    showNotification('历史记录已删除', 'success')
   }
   
-  // 从文本生成任务中删除
+  // 从文本生成任务中删除（保持兼容性）
   const textIndex = textTo3DTasks.value.findIndex(h => h.id === itemId)
   if (textIndex > -1) {
     textTo3DTasks.value.splice(textIndex, 1)
-    showNotification('历史记录已删除', 'success')
-    return
   }
   
-  // 从图片生成任务中删除
+  // 从图片生成任务中删除（保持兼容性）
   const imageIndex = imageTo3DTasks.value.findIndex(h => h.id === itemId)
   if (imageIndex > -1) {
     imageTo3DTasks.value.splice(imageIndex, 1)
-    showNotification('历史记录已删除', 'success')
-    return
   }
   
-  showNotification('未找到要删除的记录', 'error')
+  if (allIndex === -1) {
+    showNotification('未找到要删除的记录', 'error')
+  }
 }
 
 const clearHistory = () => {
+  allHistoryTasks.value = []
   textTo3DTasks.value = []
   imageTo3DTasks.value = []
   selectedItemId.value = '' // 清除选中状态

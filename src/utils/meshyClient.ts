@@ -96,7 +96,7 @@ export class MeshyClient {
   private readonly CACHE_TTL = 3000
 
   constructor() {
-    const serverBaseUrl = import.meta.env.VITE_AUTH_SERVER_URL || 'http://localhost:3001'
+    const serverBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
     this.client = axios.create({
       baseURL: `${serverBaseUrl}/api/meshy`,
       headers: {
@@ -253,49 +253,43 @@ export class MeshyClient {
     return response.data
   }
 
-  async getTextTo3DTasks(params?: {
-    page_size?: number
-    page_num?: number
-  }): Promise<MeshyTaskStatus[]> {
-    const { page_size = 10, page_num = 1 } = params || {}
-    const response = await this.client.get(`/openapi/v2/text-to-3d`, {
-      params: { page_size, page_num }
-    })
-    // API返回的是数组，直接返回
-    return Array.isArray(response.data) ? response.data : []
-  }
-
-  async getImageTo3DTasks(params?: {
-    page_size?: number
-    page_num?: number
-  }): Promise<MeshyTaskStatus[]> {
-    const { page_size = 10, page_num = 1 } = params || {}
-    const response = await this.client.get(`/openapi/v1/image-to-3d`, {
-      params: { page_size, page_num }
-    })
-    // API返回的是数组，直接返回
-    return Array.isArray(response.data) ? response.data : []
-  }
-
   async getAllTasks(params?: {
     page_size?: number
     page_num?: number
-  }): Promise<{ textTo3D: MeshyTaskStatus[], imageTo3D: MeshyTaskStatus[] }> {
+  }): Promise<{ 
+    textTo3D: MeshyTaskStatus[], 
+    imageTo3D: MeshyTaskStatus[],
+    remesh: MeshyTaskStatus[],
+    retexture: MeshyTaskStatus[],
+    summary?: any
+  }> {
     try {
-      const [textTo3DTasks, imageTo3DTasks] = await Promise.all([
-        this.getTextTo3DTasks(params),
-        this.getImageTo3DTasks(params)
-      ])
+      const response = await this.client.get('/tasks/all', { params })
+      const data = response.data
+      
+      // 服务器返回的是 { tasks: [...], total: number, summary: {...} }
+      // 需要按 taskType 分类
+      const tasks = data.tasks || []
+      
+      const textTo3D = tasks.filter((task: any) => task.taskType === 'text-to-3d')
+      const imageTo3D = tasks.filter((task: any) => task.taskType === 'image-to-3d')
+      const remesh = tasks.filter((task: any) => task.taskType === 'remesh')
+      const retexture = tasks.filter((task: any) => task.taskType === 'retexture')
       
       return {
-        textTo3D: textTo3DTasks,
-        imageTo3D: imageTo3DTasks
+        textTo3D,
+        imageTo3D,
+        remesh,
+        retexture,
+        summary: data.summary
       }
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      console.error('Error fetching all tasks:', error)
       return {
         textTo3D: [],
-        imageTo3D: []
+        imageTo3D: [],
+        remesh: [],
+        retexture: []
       }
     }
   }
