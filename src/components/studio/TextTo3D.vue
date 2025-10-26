@@ -95,18 +95,9 @@
 
         <!-- 高级选项 -->
         <div class="form-group">
-          <button
-            type="button"
-            @click="showAdvancedOptions = !showAdvancedOptions"
-            class="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-          >
-            <svg :class="['w-4 h-4 transition-transform', showAdvancedOptions ? 'rotate-90' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-            高级选项
-          </button>
+          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">高级选项</h4>
           
-          <div v-if="showAdvancedOptions" class="mt-4 space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <div class="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <!-- 拓扑类型 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">拓扑类型</label>
@@ -122,7 +113,7 @@
             <!-- 目标多边形数量 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                目标多边形数量: {{ textOptions.target_polycount.toLocaleString() }}
+                目标多边形数量: {{ textOptions.target_polycount?.toLocaleString() || '30,000' }}
               </label>
               <input
                 type="range"
@@ -164,10 +155,10 @@
         <!-- 生成按钮 -->
         <button
           type="submit"
-          :disabled="!textPrompt.trim() || props.isGenerating"
+          :disabled="!textPrompt.trim() || isLoading || props.isGenerating"
           class="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200 disabled:cursor-not-allowed"
         >
-          <span v-if="props.isGenerating" class="flex items-center justify-center gap-2">
+          <span v-if="isLoading || props.isGenerating" class="flex items-center justify-center gap-2">
             <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -280,7 +271,7 @@ const props = withDefaults(defineProps<Props>(), {
   textPrompt: '',
   textOptions: () => ({
     art_style: 'realistic',
-    ai_model: 'meshy-5',
+    ai_model: 'latest',
     topology: 'triangle',
     target_polycount: 30000,
     should_remesh: false,
@@ -300,11 +291,14 @@ const emit = defineEmits<{
 // Local state
 const textPrompt = ref(props.textPrompt)
 const textOptions = reactive({ ...props.textOptions })
-const showAdvancedOptions = ref(false)
 const showTemplateModal = ref(false)
+const isLoading = ref(false)
 
 // Methods
 const handleSubmit = () => {
+  // 立即设置loading状态，防止重复点击
+  isLoading.value = true
+  
   emit('update:textPrompt', textPrompt.value)
   emit('update:textOptions', textOptions)
   emit('generate-from-text', textPrompt.value, textOptions)
@@ -321,7 +315,24 @@ const selectTemplate = (template: Template) => {
 }
 
 // Watch for prop changes
-import { watch } from 'vue'
+import { watch, onMounted } from 'vue'
+
+// 确保默认值在组件挂载时正确应用
+onMounted(() => {
+  // 确保默认选择正确应用
+  if (!textOptions.art_style) {
+    textOptions.art_style = 'realistic'
+  }
+  if (!textOptions.ai_model) {
+    textOptions.ai_model = 'latest'
+  }
+  if (!textOptions.topology) {
+    textOptions.topology = 'triangle'
+  }
+  
+  // 触发更新事件，确保父组件知道默认值
+  emit('update:textOptions', textOptions)
+})
 
 watch(() => props.textPrompt, (newVal) => {
   textPrompt.value = newVal
@@ -330,6 +341,13 @@ watch(() => props.textPrompt, (newVal) => {
 watch(() => props.textOptions, (newVal) => {
   Object.assign(textOptions, newVal)
 }, { deep: true })
+
+watch(() => props.isGenerating, (newVal) => {
+  // 当外部isGenerating状态变化时，重置本地loading状态
+  if (newVal) {
+    isLoading.value = false
+  }
+})
 </script>
 
 <style scoped>
