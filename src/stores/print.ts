@@ -33,6 +33,7 @@ function saveQueueToStorage(queue: PrintJob[]): void {
 export const usePrintStore = defineStore('print', () => {
   const printQueue = ref<PrintJob[]>(loadQueueFromStorage())
   const currentPrintJob = ref<PrintJob | null>(null)
+  const bambuConnected = ref(false)
 
   watch(
     printQueue,
@@ -94,9 +95,14 @@ export const usePrintStore = defineStore('print', () => {
     return printQueue.value.filter((j) => j.status === 'printing')
   }
 
+  function setBambuConnected(connected: boolean) {
+    bambuConnected.value = connected
+  }
+
   return {
     printQueue,
     currentPrintJob,
+    bambuConnected,
     addPrintJob,
     removePrintJob,
     updateJobStatus,
@@ -106,5 +112,6 @@ export const usePrintStore = defineStore('print', () => {
     getJobById,
     getPendingJobs,
     getActiveJobs,
+    setBambuConnected,
   }
 })
