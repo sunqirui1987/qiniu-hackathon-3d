@@ -4,15 +4,7 @@
     <div class="viewer-toolbar dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <!-- 选中模型信息 -->
-          <div v-if="selectedItem" class="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            <span class="text-sm font-medium text-blue-900 dark:text-blue-100">
-              已选择模型【{{ selectedItem.id }}】
-            </span>
-          </div>
+     
           
           <div class="flex items-center gap-2">
             <span class="text-sm text-gray-600 dark:text-gray-400">视图:</span>
@@ -77,7 +69,7 @@
           </button>
           <button
             @click="handleExportModel"
-            :disabled="!currentModel"
+            :disabled="!selectedItem?.url"
             class="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded text-sm transition-colors"
           >
             导出
@@ -88,9 +80,17 @@
 
     <!-- 3D查看器主体 -->
     <div class="viewer-main flex-1 relative">
+      <!-- 加载状态 -->
+      <div v-if="isLoadingModel" class="flex items-center justify-center h-full">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p class="text-gray-600 dark:text-gray-400">正在处理模型URL...</p>
+        </div>
+      </div>
+      
       <ModularViewer
-        v-if="currentModel"
-        :model-url="currentModel"
+        v-else-if="modelUrl"
+        :model-url="modelUrl"
         :auto-load="true"
         :view-mode="viewMode"
         :show-wireframe="showWireframe"
@@ -121,22 +121,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import ModularViewer from '@/components/3d/ModularViewer.vue'
+import { meshyClient } from '@/utils/meshyClient'
+import type { SelectedItem } from '@/types/model'
 
 // Props
 interface Props {
-  currentModel?: string
   modelInfo?: {
     faces: number
     vertices: number
     fileSize: string
   }
-  selectedItem?: any
+  selectedItem?: SelectedItem
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  currentModel: '',
   modelInfo: () => ({
     faces: 0,
     vertices: 0,
@@ -147,7 +147,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Emits
 interface Emits {
-  'update:currentModel': [value: string]
+  'update:selectedItem': [value: SelectedItem]
   'update:modelInfo': [value: any]
   'update:viewMode': [value: string]
   'update:showWireframe': [value: boolean]
@@ -165,10 +165,87 @@ const emit = defineEmits<Emits>()
 const viewMode = ref('perspective')
 const showWireframe = ref(false)
 const showGrid = ref(true)
+const processedModelUrl = ref('')
+const isLoadingModel = ref(false)
 
-// 监听props变化
-watch(() => props.currentModel, (newValue) => {
-  // 当外部传入的currentModel变化时，可以在这里处理
+// 计算属性：处理模型URL
+const modelUrl = computed(() => {
+  if (!props.selectedItem) return ''
+  
+  // 获取模型URL，优先从 model_urls 中选择，然后回退到 url
+  let sourceUrl = ''
+  
+  if (props.selectedItem.model_urls) {
+    // 优先选择 GLB 格式，然后是其他格式
+    sourceUrl = props.selectedItem.model_urls.glb || 
+                props.selectedItem.model_urls.fbx || 
+                props.selectedItem.model_urls.obj || 
+                props.selectedItem.model_urls.usdz || ''
+  } else if (props.selectedItem.url) {
+    // 兼容旧的导入模型格式
+    sourceUrl = props.selectedItem.url
+  }
+  
+  if (!sourceUrl) return ''
+  
+  // 如果已经是代理URL或本地URL，直接返回
+  if (sourceUrl.startsWith('http://localhost') || 
+      sourceUrl.startsWith('blob:') ||
+      sourceUrl.includes('/api/proxy/')) {
+    return sourceUrl
+  }
+  
+  // 返回处理后的URL
+  return processedModelUrl.value || sourceUrl
+})
+
+// 监听props变化并处理模型URL
+watch(() => props.selectedItem, async (newValue) => {
+  console.log('Selected item changed:', newValue)
+  
+  if (newValue) {
+    // 获取源URL
+    let sourceUrl = ''
+    
+    if (newValue.model_urls) {
+      // 优先选择 GLB 格式，然后是其他格式
+      sourceUrl = newValue.model_urls.glb || 
+                  newValue.model_urls.fbx || 
+                  newValue.model_urls.obj || 
+                  newValue.model_urls.usdz || ''
+    } else if (newValue.url) {
+      // 兼容旧的导入模型格式
+      sourceUrl = newValue.url
+    }
+    
+    if (sourceUrl) {
+      // 检查是否需要代理处理
+      if (!sourceUrl.startsWith('http://localhost') && 
+          !sourceUrl.startsWith('blob:') &&
+          !sourceUrl.includes('/api/proxy/')) {
+        
+        isLoadingModel.value = true
+        try {
+          // 获取代理后的模型URL
+          const proxiedUrl = await meshyClient.getProxiedAssetUrl(sourceUrl)
+          processedModelUrl.value = proxiedUrl
+          console.log('Model URL processed:', proxiedUrl)
+        } catch (error) {
+          console.error('Failed to get proxied URL:', error)
+          emit('notification', '模型URL处理失败', 'error')
+          processedModelUrl.value = sourceUrl // 回退到原始URL
+        } finally {
+          isLoadingModel.value = false
+        }
+      } else {
+        processedModelUrl.value = sourceUrl
+      }
+    } else {
+      processedModelUrl.value = ''
+    }
+  } else {
+    processedModelUrl.value = ''
+  }
 }, { immediate: true })
 
 // 方法
@@ -196,7 +273,13 @@ const handleImportModel = () => {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (file) {
       const url = URL.createObjectURL(file)
-      emit('update:currentModel', url)
+      const newItem = {
+        url,
+        name: file.name,
+        type: 'imported',
+        created_at: new Date().toISOString()
+      }
+      emit('update:selectedItem', newItem)
       emit('model-imported', file)
       emit('notification', '模型导入成功！', 'success')
     }
@@ -205,7 +288,7 @@ const handleImportModel = () => {
 }
 
 const handleExportModel = () => {
-  if (!props.currentModel) return
+  if (!props.selectedItem?.url) return
   emit('model-exported')
   emit('notification', '模型导出中...', 'success')
 }

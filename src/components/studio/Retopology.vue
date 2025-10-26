@@ -1,7 +1,7 @@
 <template>
   <div class="p-6">
     <!-- 占位区域 - 当没有选中模型时显示 -->
-    <div v-if="!currentModel" class="flex flex-col items-center justify-center h-96 text-center">
+    <div v-if="!selectedItem" class="flex flex-col items-center justify-center h-96 text-center">
       <div class="mb-6">
         <svg class="w-24 h-24 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -180,6 +180,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import type { SelectedItem } from '@/types/model'
 
 // Props
 interface Task {
@@ -200,9 +201,8 @@ interface Props {
     preserve_uv: boolean
   }
   availableTasks?: Task[]
-  currentModel?: string
   isProcessing?: boolean
-  selectedItem?: any
+  selectedItem?: SelectedItem
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -217,7 +217,6 @@ const props = withDefaults(defineProps<Props>(), {
     preserve_uv: false
   }),
   availableTasks: () => [],
-  currentModel: '',
   isProcessing: false,
   selectedItem: null
 })
@@ -235,6 +234,12 @@ const showAdvancedOptions = ref(false)
 
 // Computed
 const isFormValid = computed(() => {
+  // 如果有选中的模型，表单就是有效的
+  if (props.selectedItem) {
+    return true
+  }
+  
+  // 如果没有选中模型，需要检查输入源
   if (retopologyOptions.input_source === 'existing_task') {
     return retopologyOptions.task_id !== ''
   } else if (retopologyOptions.input_source === 'upload_model') {

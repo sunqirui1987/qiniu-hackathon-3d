@@ -82,7 +82,6 @@
         <Retopology
           v-if="activeMainMenu === 'retopology'"
           :retopology-options="retopologyOptions"
-          :current-model="currentModel"
           :model-info="modelInfo"
           :is-processing="isProcessing"
           :available-tasks="availableTasks"
@@ -96,7 +95,6 @@
         <Texture
           v-if="activeMainMenu === 'texture'"
           :texture-options="textureOptions"
-          :current-model="currentModel"
           :is-processing="isProcessing"
           :available-tasks="availableTasks"
           :selected-item="selectedItem"
@@ -115,6 +113,7 @@ import TextTo3D from './TextTo3D.vue'
 import ImageTo3D from './ImageTo3D.vue'
 import Retopology from './Retopology.vue'
 import Texture from './Texture.vue'
+import type { SelectedItem } from '@/types/model'
 
 // 主菜单图标组件
 const ModelIcon = () => h('svg', { 
@@ -175,14 +174,13 @@ interface Props {
   imageOptions: any
   retopologyOptions: any
   textureOptions: any
-  currentModel: string
   modelInfo: any
   isGenerating: boolean
   isProcessing: boolean
   generationProgress: number
   generationStatus: string
   availableTasks?: any[]
-  selectedItem?: any
+  selectedItem?: SelectedItem
 }
 
 const props = withDefaults(defineProps<Props>(), {

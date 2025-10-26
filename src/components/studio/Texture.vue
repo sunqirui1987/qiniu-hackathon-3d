@@ -1,7 +1,7 @@
 <template>
   <div class="p-6">
     <!-- 占位区域 - 当没有选中模型时显示 -->
-    <div v-if="!currentModel" class="flex flex-col items-center justify-center h-96 text-center">
+    <div v-if="!selectedItem" class="flex flex-col items-center justify-center h-96 text-center">
       <div class="mb-6">
         <svg class="w-24 h-24 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17v4a2 2 0 002 2h4M13 13h4a2 2 0 012 2v4a2 2 0 01-2 2h-4m-6-4a2 2 0 01-2-2V9a2 2 0 012-2h2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7h10" />
@@ -336,7 +336,6 @@ interface Props {
     generate_normal: boolean
   }
   availableTasks?: Task[]
-  currentModel?: string
   isProcessing?: boolean
   selectedItem?: any
 }
@@ -358,7 +357,6 @@ const props = withDefaults(defineProps<Props>(), {
     generate_normal: false
   }),
   availableTasks: () => [],
-  currentModel: '',
   isProcessing: false,
   selectedItem: null
 })
@@ -377,8 +375,8 @@ const imageInput = ref<HTMLInputElement>()
 
 // Computed
 const isFormValid = computed(() => {
-  // 如果有选中的模型，则不需要检查输入源
-  if (props.currentModel) {
+  // 如果有选中的模型，则只需要检查纹理输入
+  if (props.selectedItem) {
     if (textureOptions.texture_input_type === 'text_prompt') {
       return textureOptions.texture_prompt.trim() !== ''
     } else if (textureOptions.texture_input_type === 'image_reference') {

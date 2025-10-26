@@ -10,15 +10,15 @@
       :retopology-options="retopologyOptions"
       :texture-options="textureOptions"
       :texture-prompt="texturePrompt"
-      :current-model="currentModel"
+
       :model-info="modelInfo"
       :is-generating="isGenerating"
       :is-processing="isProcessing"
       :generation-progress="generationProgress"
       :generation-status="generationStatus"
       :selected-image="selectedImage"
-      :available-tasks="availableTasks"
       :selected-item="selectedItem"
+      :available-tasks="availableTasks"
       @tab-change="activeTab = $event"
       @main-menu-change="activeMainMenu = $event"
       @update:text-prompt="textPrompt = $event"
@@ -34,18 +34,16 @@
       @generate-texture="handleTextureGeneration"
     />
 
-    <!-- 中间3D查看器区域 -->
+    <!-- 中间3D查看器 -->
     <CenterViewer
-      :current-model="currentModel"
-      :model-info="modelInfo"
       :selected-item="selectedItem"
-      @update:current-model="currentModel = $event"
+      :model-info="modelInfo"
+      @update:selected-item="selectedItem = $event"
       @update:model-info="modelInfo = $event"
       @model-imported="handleModelImported"
-      @model-exported="handleModelExported"
       @model-loaded="handleModelLoaded"
       @viewer-error="handleViewerError"
-      @notification="(message, type) => showNotification(message, type)"
+      @notification="showNotification"
     />
 
     <!-- 右侧历史面板组件 -->
@@ -90,6 +88,7 @@ import LeftTabPanel from '@/components/studio/LeftTabPanel.vue'
 import CenterViewer from '@/components/studio/CenterViewer.vue'
 import RightHistoryPanel from '@/components/studio/RightHistoryPanel.vue'
 import { useTextTo3D } from '@/composables/useTextTo3D'
+import type { SelectedItem } from '@/types/model'
 import { useImageTo3D } from '@/composables/useImageTo3D'
 import { meshyClient } from '@/utils/meshyClient'
 
@@ -103,9 +102,8 @@ const { generateFromImage, isGenerating: imageGenerating, progress: imageProgres
 // 响应式数据
 const activeTab = ref('text-to-3d')
 const activeMainMenu = ref('model')
-const currentModel = ref<string>('')
 const historyCategory = ref('all')
-const selectedItem = ref<any>(null) // 新增：当前选中的历史项目对象
+const selectedItem = ref<SelectedItem | null>(null) // 当前选中的历史项目对象
 
 // Meshy API 任务列表
 const textTo3DTasks = ref([])
@@ -250,7 +248,6 @@ const handleTextTo3D = async (prompt: string, options: any) => {
     
     const result = await generateFromText(textTo3DOptions)
     if (result) {
-      currentModel.value = result.url
       showNotification('3D模型生成成功！', 'success')
       // 重新加载历史数据以获取最新的任务
       await loadHistoryData()
@@ -283,7 +280,6 @@ const handleImageTo3D = async (file: File | null) => {
 
     const result = await generateFromImage(options)
     if (result) {
-      currentModel.value = result.modelUrl
       showNotification('3D模型生成成功！', 'success')
       // 重新加载历史数据以获取最新的任务
       await loadHistoryData()
@@ -295,32 +291,127 @@ const handleImageTo3D = async (file: File | null) => {
 }
 
 const handleRetopology = async (options: any) => {
-  if (!currentModel.value) return
+  if (!selectedItem.value?.url && !options.task_id && !options.model_url) {
+    showNotification('请先选择一个模型或任务', 'error')
+    return
+  }
   
   isProcessing.value = true
   try {
-    // 模拟重拓扑处理
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    showNotification('重拓扑完成！', 'success')
+    // 构造重拓扑参数
+    const remeshOptions = {
+      input_task_id: options.task_id || undefined,
+      model_url: options.model_url || undefined,
+      target_formats: ['glb', 'obj'],
+      topology: options.topology || 'triangle',
+      target_polycount: options.target_polycount || 30000,
+      resize_height: options.resize_height || undefined,
+      origin_at: options.origin_at || 'bottom',
+      convert_format_only: options.convert_format_only || false
+    }
+
+    console.log('开始重拓扑处理:', remeshOptions)
+    
+    // 创建重拓扑任务
+    const taskResponse = await meshyClient.createRemesh(remeshOptions)
+    console.log('重拓扑任务创建成功:', taskResponse)
+    
+    showNotification('重拓扑任务已创建，正在处理中...', 'success')
+    
+    // 轮询任务状态直到完成
+    const finalStatus = await meshyClient.pollTaskUntilComplete(
+      taskResponse.result,
+      'remesh',
+      {
+        maxAttempts: 120,
+        pollInterval: 5000,
+        onProgress: (progress, status) => {
+          console.log(`重拓扑进度: ${progress}%`, status)
+          showNotification(`重拓扑进度: ${progress}%`, 'success')
+        }
+      }
+    )
+    
+    console.log('重拓扑完成:', finalStatus)
+    
+    if (finalStatus.model_urls?.glb) {
+      showNotification('重拓扑完成！模型已更新', 'success')
+    } else {
+      showNotification('重拓扑完成，但未获取到模型文件', 'error')
+    }
+    
+    // 刷新历史数据
+    await loadHistoryData()
+    
   } catch (error) {
     console.error('Retopology failed:', error)
-    showNotification('重拓扑失败，请重试', 'error')
+    showNotification(`重拓扑失败: ${error.message}`, 'error')
   } finally {
     isProcessing.value = false
   }
 }
 
 const handleTextureGeneration = async (prompt: string, options: any) => {
-  if (!currentModel.value) return
+  if (!selectedItem.value?.url && !options.task_id && !options.model_url) {
+    showNotification('请先选择一个模型或任务', 'error')
+    return
+  }
   
   isProcessing.value = true
   try {
-    // 模拟贴图生成
-    await new Promise(resolve => setTimeout(resolve, 5000))
-    showNotification('贴图生成完成！', 'success')
+    // 构造贴图生成参数
+    const retextureOptions = {
+      input_task_id: options.task_id || undefined,
+      model_url: options.model_url || undefined,
+      text_style_prompt: prompt || options.texture_prompt,
+      image_style_url: options.image_style_url || undefined,
+      ai_model: options.ai_model || 'meshy-4',
+      enable_original_uv: options.enable_original_uv !== false,
+      enable_pbr: options.enable_pbr !== false
+    }
+
+    console.log('开始贴图生成:', retextureOptions)
+    
+    // 创建贴图生成任务
+    const taskResponse = await meshyClient.createRetexture(retextureOptions)
+    console.log('贴图生成任务创建成功:', taskResponse)
+    
+    showNotification('贴图生成任务已创建，正在处理中...', 'success')
+    
+    // 轮询任务状态直到完成
+    const finalStatus = await meshyClient.pollTaskUntilComplete(
+      taskResponse.result,
+      'retexture',
+      {
+        maxAttempts: 120,
+        pollInterval: 5000,
+        onProgress: (progress, status) => {
+          console.log(`贴图生成进度: ${progress}%`, status)
+          showNotification(`贴图生成进度: ${progress}%`, 'success')
+        }
+      }
+    )
+    
+    console.log('贴图生成完成:', finalStatus)
+    
+    if (finalStatus.model_urls?.glb) {
+      showNotification('贴图生成完成！模型已更新', 'success')
+    } else {
+      showNotification('贴图生成完成，但未获取到模型文件', 'error')
+    }
+    
+    // 如果有贴图URL，也可以显示相关信息
+    if (finalStatus.texture_urls && finalStatus.texture_urls.length > 0) {
+      console.log('生成的贴图:', finalStatus.texture_urls)
+      showNotification(`贴图生成完成！生成了 ${finalStatus.texture_urls.length} 个贴图文件`, 'success')
+    }
+    
+    // 刷新历史数据
+    await loadHistoryData()
+    
   } catch (error) {
     console.error('Texture generation failed:', error)
-    showNotification('贴图生成失败，请重试', 'error')
+    showNotification(`贴图生成失败: ${error.message}`, 'error')
   } finally {
     isProcessing.value = false
   }
@@ -344,10 +435,7 @@ const handleViewerError = (error: string) => {
   showNotification(error, 'error')
 }
 
-const loadHistoryItem = async (item: any) => {
-  // 设置选中的项目对象
-  selectedItem.value = item
-  
+const loadHistoryItem = (item: any) => {
   // 处理Meshy API格式的模型URL
   let modelUrl = ''
   
@@ -361,15 +449,12 @@ const loadHistoryItem = async (item: any) => {
   }
   
   if (modelUrl) {
-    try {
-      // 使用代理 URL 避免 CORS 问题
-      const proxiedUrl = await meshyClient.getProxiedAssetUrl(modelUrl)
-      currentModel.value = proxiedUrl
-      showNotification('历史模型加载成功！', 'success')
-    } catch (error) {
-      console.error('Failed to get proxied URL:', error)
-      showNotification('模型加载失败', 'error')
+    // 设置选中的项目对象，包含原始URL，让CenterViewer处理代理
+    selectedItem.value = {
+      ...item,
+      url: modelUrl
     }
+    showNotification('历史模型加载成功！', 'success')
   } else {
     showNotification('该任务暂无可用的模型文件', 'error')
   }
@@ -425,9 +510,13 @@ const showNotification = (messageOrData: string | { message: string, type: 'succ
 
 // 生命周期
 onMounted(() => {
-  // 从路由参数加载模型
+  // 如果URL中有模型参数，直接加载
   if (route.query.model) {
-    currentModel.value = route.query.model as string
+    selectedItem.value = {
+      url: route.query.model as string,
+      type: 'external',
+      created_at: new Date().toISOString()
+    }
   }
   
   // 加载历史数据
