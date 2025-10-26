@@ -29,6 +29,7 @@
     "@babylonjs/materials": "^6.49.0",
     "@babylonjs/serializers": "^6.49.0",
     "axios": "^1.6.0",
+    "bambu-node": "^3.22.21",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",

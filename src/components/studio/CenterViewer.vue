@@ -75,17 +75,11 @@
 
         <div class="flex items-center gap-2">
           <button
-            @click="handleImportModel"
-            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
-          >
-            导入模型
-          </button>
-          <button
-            @click="handleExportModel"
+            @click="handleConnectPrinter"
             :disabled="!selectedItem?.url"
-            class="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded text-sm transition-colors"
+            class="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white rounded text-sm transition-colors"
           >
-            导出
+            连接打印机
           </button>
         </div>
       </div>
@@ -122,21 +116,31 @@
           </svg>
           <h3 class="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-2">3D工作室</h3>
           <p class="text-gray-500 dark:text-gray-500 mb-4">选择左侧功能开始创建3D模型</p>
-          <button
-            @click="handleImportModel"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            或者导入现有模型
-          </button>
         </div>
       </div>
     </div>
+
+    <!-- 打印模态框 -->
+    <PrintModal
+      :is-visible="showPrintModal"
+      :model-info="{
+        name: selectedItem?.name,
+        url: modelUrl,
+        faces: modelInfo?.faces,
+        vertices: modelInfo?.vertices,
+        fileSize: modelInfo?.fileSize
+      }"
+      @close="showPrintModal = false"
+      @print-success="handlePrintSuccess"
+      @print-error="handlePrintError"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import ModularViewer from '@/components/3d/ModularViewer.vue'
+import PrintModal from '@/components/modals/PrintModal.vue'
 import { meshyClient } from '@/utils/meshyClient'
 import type { SelectedItem } from '@/types/model'
 
@@ -167,8 +171,6 @@ interface Emits {
   'update:showWireframe': [value: boolean]
   'update:showGrid': [value: boolean]
   'update:showAxes': [value: boolean]
-  'model-imported': [file: File]
-  'model-exported': []
   'model-loaded': [info: any]
   'viewer-error': [error: string]
   'notification': [message: string, type: 'success' | 'error']
@@ -183,6 +185,7 @@ const showGrid = ref(true)
 const showAxes = ref(true)
 const processedModelUrl = ref('')
 const isLoadingModel = ref(false)
+const showPrintModal = ref(false)
 
 // 计算属性：处理模型URL
 const modelUrl = computed(() => {
@@ -286,32 +289,20 @@ const handleToggleAxes = () => {
   emit('update:showAxes', showAxes.value)
 }
 
-const handleImportModel = () => {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.glb,.gltf,.obj,.fbx'
-  input.onchange = (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      const newItem = {
-        url,
-        name: file.name,
-        type: 'imported',
-        created_at: new Date().toISOString()
-      }
-      emit('update:selectedItem', newItem)
-      emit('model-imported', file)
-      emit('notification', '模型导入成功！', 'success')
-    }
+const handleConnectPrinter = () => {
+  if (!props.selectedItem?.url) {
+    emit('notification', '请先选择一个模型', 'error')
+    return
   }
-  input.click()
+  showPrintModal.value = true
 }
 
-const handleExportModel = () => {
-  if (!props.selectedItem?.url) return
-  emit('model-exported')
-  emit('notification', '模型导出中...', 'success')
+const handlePrintSuccess = (message: string) => {
+  emit('notification', message, 'success')
+}
+
+const handlePrintError = (error: string) => {
+  emit('notification', error, 'error')
 }
 
 const handleModelLoaded = (info: any) => {
