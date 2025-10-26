@@ -28,6 +28,7 @@
     "@babylonjs/loaders": "^6.0.0",
     "@babylonjs/materials": "^6.49.0",
     "@babylonjs/serializers": "^6.49.0",
+    "@hiv3d/bambu-node": "^3.22.32",
     "axios": "^1.6.0",
     "bambu-node": "^3.22.21",
     "bcryptjs": "^2.4.3",

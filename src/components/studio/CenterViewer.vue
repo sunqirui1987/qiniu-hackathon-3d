@@ -124,8 +124,8 @@
     <PrintModal
       :is-visible="showPrintModal"
       :model-info="{
-        name: selectedItem?.name,
-        url: modelUrl,
+        name: selectedItem?.name || '未知模型',
+        url: modelUrl || selectedItem?.url,
         faces: modelInfo?.faces,
         vertices: modelInfo?.vertices,
         fileSize: modelInfo?.fileSize
@@ -290,10 +290,24 @@ const handleToggleAxes = () => {
 }
 
 const handleConnectPrinter = () => {
-  if (!props.selectedItem?.url) {
+  if (!props.selectedItem) {
     emit('notification', '请先选择一个模型', 'error')
     return
   }
+  
+  // 检查是否有可用的模型URL
+  const hasValidUrl = modelUrl.value || props.selectedItem.url
+  if (!hasValidUrl) {
+    emit('notification', '模型文件URL不可用，无法发送到打印机', 'error')
+    return
+  }
+  
+  console.log('Opening print modal with model:', {
+    name: props.selectedItem.name,
+    url: modelUrl.value,
+    selectedItem: props.selectedItem
+  })
+  
   showPrintModal.value = true
 }
 

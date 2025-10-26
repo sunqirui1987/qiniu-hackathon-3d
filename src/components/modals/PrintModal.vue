@@ -44,20 +44,19 @@
           </button>
         </div>
 
-        <!-- 打印机选择 -->
-        <div v-if="connected && hasPrinters" class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            选择打印机
-          </label>
-          <select 
-            v-model="selectedPrinter"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">请选择打印机</option>
-            <option v-for="printer in printers" :key="printer" :value="printer">
-              {{ printer }}
-            </option>
-          </select>
+        <!-- Bambu Connect 说明 -->
+        <div v-if="connected" class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Bambu Connect 已连接</h4>
+              <p class="text-sm text-blue-700 dark:text-blue-300">
+                点击"发送到打印机"将直接在 Bambu Connect 中打开模型文件，您可以在那里选择打印机和设置打印参数。
+              </p>
+            </div>
+          </div>
         </div>
 
         <!-- 文件信息 -->
@@ -87,7 +86,7 @@
         </button>
         <button
           @click="handleSendToPrint"
-          :disabled="!connected || !selectedPrinter || !modelInfo"
+          :disabled="!connected || !modelInfo || !modelInfo.url"
           class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
         >
           发送到打印机
@@ -128,16 +127,11 @@ const emit = defineEmits<Emits>()
 // Bambu Connect 相关
 const {
   connected,
-  printers,
   error,
   isChecking,
-  hasPrinters,
   checkBambuConnect,
   importFileToBambuConnect
 } = useBambuConnect()
-
-// 本地状态
-const selectedPrinter = ref('')
 
 // 监听弹窗显示状态，自动检查连接
 watch(() => props.isVisible, (visible) => {
@@ -150,9 +144,6 @@ watch(() => props.isVisible, (visible) => {
 const handleCheckConnection = async () => {
   try {
     await checkBambuConnect()
-    if (connected.value && printers.value.length > 0) {
-      selectedPrinter.value = printers.value[0]
-    }
   } catch (err) {
     console.error('Failed to check Bambu Connect:', err)
   }
@@ -181,20 +172,20 @@ const handleSendToPrint = async () => {
     return
   }
 
-  if (!selectedPrinter.value) {
-    emit('print-error', '请选择要使用的打印机')
-    return
-  }
-
   try {
-    // 使用新的 Bambu Connect URL scheme
+    console.log('Sending model to Bambu Connect:', {
+      url: props.modelInfo.url,
+      name: props.modelInfo.name
+    })
+
+    // 使用bambu-connect://import-file协议发送文件
     const result = await importFileToBambuConnect(
       props.modelInfo.url,
       props.modelInfo.name
     )
 
     if (result.success) {
-      emit('print-success', `模型 "${props.modelInfo.name}" 已成功发送到 Bambu Connect`)
+      emit('print-success', result.message)
       emit('close')
     } else {
       emit('print-error', `发送失败: ${result.message}`)

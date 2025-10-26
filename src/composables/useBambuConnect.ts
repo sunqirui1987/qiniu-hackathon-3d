@@ -108,6 +108,51 @@ export function useBambuConnect() {
     }
   }
 
+  const importFileToBambuConnect = async (
+    fileUrl: string,
+    fileName: string
+  ): Promise<SendToPrintResult> => {
+    try {
+      error.value = null
+
+      if (!connected.value) {
+        throw new Error('Bambu Connect is not connected. Please check connection first.')
+      }
+
+      // 确保文件名有正确的扩展名
+      let processedFileName = fileName
+      if (!fileName.toLowerCase().endsWith('.3mf') && !fileName.toLowerCase().endsWith('.gcode')) {
+        processedFileName = `${fileName}.3mf`
+      }
+
+      // 构建bambu-connect URL scheme
+      const params = new URLSearchParams({
+        path: fileUrl,
+        name: processedFileName,
+        version: '1.0.0'
+      })
+
+      const bambuUrl = `bambu-connect://import-file?${params.toString()}`
+      
+      console.log('Opening Bambu Connect with URL:', bambuUrl)
+      
+      // 使用window.location.href来触发协议处理
+      window.location.href = bambuUrl
+
+      return {
+        success: true,
+        message: `模型 "${processedFileName}" 已发送到 Bambu Connect`,
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to import file to Bambu Connect'
+      error.value = errorMessage
+      return {
+        success: false,
+        message: errorMessage,
+      }
+    }
+  }
+
   const reset = () => {
     connected.value = false
     printers.value = []
@@ -125,6 +170,7 @@ export function useBambuConnect() {
     checkBambuConnect,
     sendToPrint,
     getPrinters,
+    importFileToBambuConnect,
     reset,
   }
 }
