@@ -77,9 +77,9 @@
           <button
             @click="handleConnectPrinter"
             :disabled="!selectedItem?.url"
-            class="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white rounded text-sm transition-colors"
+            class="px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded text-sm transition-colors"
           >
-            连接打印机
+            发送到打印机
           </button>
         </div>
       </div>

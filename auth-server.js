@@ -22,7 +22,6 @@ import crypto from 'crypto'
 import { config } from './server/config/env.js'
 import { authRouter } from './server/routes/auth.js'
 import { meshyRouter } from './server/routes/meshy.js'
-import { errorHandler } from './server/middleware/errorHandler.js'
 import { securityMiddleware } from './server/middleware/security.js'
 
 const app = express()
@@ -74,14 +73,6 @@ app.use('/api/meshy', (req, res, next) => {
   next()
 }, meshyRouter)
 
-// 简化的OAuth路由 - 直接访问 /auth/provider
-app.get('/auth/:provider', (req, res) => {
-  const { provider } = req.params
-  const { redirect } = req.query // 获取redirect参数
-  
-  if (!['github', 'google'].includes(provider)) {
-    return res.status(400).json({
-      success: false,
       error: 'Unsupported OAuth provider'
     })
   }

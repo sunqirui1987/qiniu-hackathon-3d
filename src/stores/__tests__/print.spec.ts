@@ -58,7 +58,6 @@ describe('usePrintStore', () => {
 
       expect(store.printQueue).toEqual([])
       expect(store.currentPrintJob).toBeNull()
-      expect(store.bambuConnected).toBe(false)
     })
 
     it('should load queue from localStorage on initialization', () => {
@@ -295,17 +294,7 @@ describe('usePrintStore', () => {
     })
   })
 
-  describe('setBambuConnected', () => {
-    it('should update connection status', () => {
-      const store = usePrintStore()
 
-      store.setBambuConnected(true)
-      expect(store.bambuConnected).toBe(true)
-
-      store.setBambuConnected(false)
-      expect(store.bambuConnected).toBe(false)
-    })
-  })
 
   describe('localStorage persistence', () => {
     it('should persist changes to localStorage', async () => {
