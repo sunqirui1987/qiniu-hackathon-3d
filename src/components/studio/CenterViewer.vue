@@ -57,6 +57,19 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
               </svg>
             </button>
+            
+            <button
+              @click="handleToggleAxes"
+              :class="[
+                'p-1 rounded transition-colors',
+                showAxes ? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+              ]"
+              title="显示坐标轴"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21l3-3-3-3m8 0l3 3-3 3M12 3v18m9-9H3" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -95,6 +108,7 @@
         :view-mode="viewMode"
         :show-wireframe="showWireframe"
         :show-grid="showGrid"
+        :show-axes="showAxes"
         @model-loaded="handleModelLoaded"
         @error="handleViewerError"
         class="w-full h-full"
@@ -152,6 +166,7 @@ interface Emits {
   'update:viewMode': [value: string]
   'update:showWireframe': [value: boolean]
   'update:showGrid': [value: boolean]
+  'update:showAxes': [value: boolean]
   'model-imported': [file: File]
   'model-exported': []
   'model-loaded': [info: any]
@@ -165,6 +180,7 @@ const emit = defineEmits<Emits>()
 const viewMode = ref('perspective')
 const showWireframe = ref(false)
 const showGrid = ref(true)
+const showAxes = ref(true)
 const processedModelUrl = ref('')
 const isLoadingModel = ref(false)
 
@@ -263,6 +279,11 @@ const handleToggleWireframe = () => {
 const handleToggleGrid = () => {
   showGrid.value = !showGrid.value
   emit('update:showGrid', showGrid.value)
+}
+
+const handleToggleAxes = () => {
+  showAxes.value = !showAxes.value
+  emit('update:showAxes', showAxes.value)
 }
 
 const handleImportModel = () => {

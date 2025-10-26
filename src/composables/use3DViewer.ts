@@ -9,7 +9,12 @@ import {
   AbstractMesh,
   Color4,
   type Mesh,
-  type ISceneLoaderAsyncResult
+  type ISceneLoaderAsyncResult,
+  // 添加网格和坐标轴支持
+  StandardMaterial,
+  MeshBuilder,
+  AxesViewer,
+  Material
 } from '@babylonjs/core'
 import { STLExport } from '@babylonjs/serializers'
 import '@babylonjs/loaders/glTF'

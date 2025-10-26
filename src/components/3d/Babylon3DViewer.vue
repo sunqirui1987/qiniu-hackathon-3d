@@ -81,12 +81,23 @@ interface Props {
   modelUrl?: string
   autoLoad?: boolean
   clearColor?: string
+  // ViewerToolbar 支持的控制选项
+  showWireframe?: boolean
+  showGrid?: boolean
+  showAxes?: boolean
+  currentView?: string
+  activeTool?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelUrl: '',
   autoLoad: true,
-  clearColor: '#f3f4f6'
+  clearColor: '#f3f4f6',
+  showWireframe: false,
+  showGrid: true,
+  showAxes: true,
+  currentView: 'perspective',
+  activeTool: 'rotate'
 })
 
 interface Emits {
@@ -95,6 +106,15 @@ interface Emits {
   (e: 'viewerReady'): void
   (e: 'modelLoaded'): void
   (e: 'modelError', error: string): void
+  // ViewerToolbar 事件支持
+  (e: 'viewChange', view: string): void
+  (e: 'toolChange', tool: string): void
+  (e: 'wireframeToggle', enabled: boolean): void
+  (e: 'gridToggle', enabled: boolean): void
+  (e: 'axesToggle', enabled: boolean): void
+  (e: 'resetView'): void
+  (e: 'fitToScreen'): void
+  (e: 'screenshot'): void
 }
 
 const emit = defineEmits<Emits>()
@@ -121,6 +141,103 @@ const {
   rotateModel,
   dispose,
 } = use3DViewer({ canvasRef })
+
+// ViewerToolbar 控制功能
+const handleViewChange = (view: string) => {
+  if (!camera.value || !scene.value) return
+  
+  switch (view) {
+    case 'perspective':
+      camera.value.mode = 0 // PERSPECTIVE_CAMERA
+      break
+    case 'orthographic':
+      camera.value.mode = 1 // ORTHOGRAPHIC_CAMERA
+      break
+    case 'top':
+      camera.value.alpha = 0
+      camera.value.beta = 0
+      break
+    case 'front':
+      camera.value.alpha = -Math.PI / 2
+      camera.value.beta = Math.PI / 2
+      break
+    case 'side':
+      camera.value.alpha = 0
+      camera.value.beta = Math.PI / 2
+      break
+  }
+  emit('viewChange', view)
+}
+
+const handleToolChange = (tool: string) => {
+  // 工具切换逻辑可以在这里实现
+  emit('toolChange', tool)
+}
+
+const handleWireframeToggle = (enabled: boolean) => {
+  if (!scene.value) return
+  
+  scene.value.meshes.forEach(mesh => {
+    if (mesh.material) {
+      mesh.material.wireframe = enabled
+    }
+  })
+  emit('wireframeToggle', enabled)
+}
+
+const handleGridToggle = (enabled: boolean) => {
+  // 网格显示/隐藏逻辑
+  emit('gridToggle', enabled)
+}
+
+const handleAxesToggle = (enabled: boolean) => {
+  // 坐标轴显示/隐藏逻辑
+  emit('axesToggle', enabled)
+}
+
+const handleResetView = () => {
+  resetCamera()
+  emit('resetView')
+}
+
+const handleFitToScreen = () => {
+  if (currentModel.value) {
+    resetCamera()
+  }
+  emit('fitToScreen')
+}
+
+const handleScreenshot = () => {
+  if (!engine.value) return
+  
+  try {
+    const canvas = engine.value.getRenderingCanvas()
+    if (canvas) {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = 'screenshot.png'
+          link.click()
+          URL.revokeObjectURL(url)
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Screenshot failed:', error)
+  }
+  emit('screenshot')
+}
+
+// 监听props变化
+watch(() => props.showWireframe, (enabled) => {
+  handleWireframeToggle(enabled)
+})
+
+watch(() => props.currentView, (view) => {
+  handleViewChange(view)
+})
 
 onMounted(() => {
   initViewer()
@@ -159,6 +276,46 @@ const handleLoadModel = async (url: string) => {
   }
 }
 
+// ModularViewer 期望的接口方法
+const setView = (view: string) => {
+  handleViewChange(view)
+}
+
+const setTool = (tool: string) => {
+  handleToolChange(tool)
+}
+
+const setDisplayOption = (option: string, value: boolean) => {
+  switch (option) {
+    case 'wireframe':
+      handleWireframeToggle(value)
+      break
+    case 'grid':
+      handleGridToggle(value)
+      break
+    case 'axes':
+      handleAxesToggle(value)
+      break
+  }
+}
+
+const resetView = () => {
+  handleResetView()
+}
+
+const fitToScreen = () => {
+  handleFitToScreen()
+}
+
+const takeScreenshot = () => {
+  handleScreenshot()
+}
+
+const updateTransform = (transform: any) => {
+  // 实现变换更新逻辑
+  console.log('Transform update:', transform)
+}
+
 defineExpose({
   scene,
   camera,
@@ -174,5 +331,22 @@ defineExpose({
   setZoom,
   rotateModel,
   dispose,
+  // ViewerToolbar 控制方法
+  handleViewChange,
+  handleToolChange,
+  handleWireframeToggle,
+  handleGridToggle,
+  handleAxesToggle,
+  handleResetView,
+  handleFitToScreen,
+  handleScreenshot,
+  // ModularViewer 期望的接口
+  setView,
+  setTool,
+  setDisplayOption,
+  resetView,
+  fitToScreen,
+  takeScreenshot,
+  updateTransform,
 })
 </script>

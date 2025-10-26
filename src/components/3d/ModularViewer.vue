@@ -1,42 +1,52 @@
 <template>
-  <div class="modular-viewer relative w-full h-full bg-gray-900 overflow-hidden">
+  <div :class="['modular-viewer relative w-full h-full overflow-hidden', viewerBackgroundClass]">
     <!-- 3D视图区域 -->
     <div class="viewer-container relative w-full h-full">
       <!-- Babylon 3D 查看器 -->
       <Babylon3DViewer
         ref="babylonViewer"
         :model-url="modelUrl"
+        :show-wireframe="displayOptions.wireframe"
         :show-grid="displayOptions.grid"
         :show-axes="displayOptions.axes"
-        :wireframe="displayOptions.wireframe"
+        :current-view="currentView"
+        :active-tool="currentTool"
         @model-loaded="handleModelLoaded"
         @error="handleError"
+        @view-change="handleViewChange"
+        @tool-change="handleToolChange"
+        @wireframe-toggle="(value) => handleDisplayToggle('wireframe', value)"
+        @grid-toggle="(value) => handleDisplayToggle('grid', value)"
+        @axes-toggle="(value) => handleDisplayToggle('axes', value)"
+        @reset-view="() => handleToolbarAction('reset')"
+        @fit-to-screen="() => handleToolbarAction('fit')"
+        @screenshot="() => handleToolbarAction('screenshot')"
         class="w-full h-full"
       />
 
       <!-- 加载状态 -->
       <div
         v-if="isLoading"
-        class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10"
+        :class="['absolute inset-0 backdrop-blur-sm flex items-center justify-center z-10', isDarkMode ? 'bg-gray-900/80' : 'bg-gray-100/80']"
       >
         <div class="text-center">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p class="text-white text-lg">加载模型中...</p>
-          <p class="text-gray-400 text-sm mt-2">{{ loadingProgress }}%</p>
+          <p :class="['text-lg', isDarkMode ? 'text-white' : 'text-gray-900']">加载模型中...</p>
+          <p :class="['text-sm mt-2', isDarkMode ? 'text-gray-400' : 'text-gray-600']">{{ loadingProgress }}%</p>
         </div>
       </div>
 
       <!-- 错误状态 -->
       <div
         v-if="error"
-        class="absolute inset-0 bg-gray-900/90 backdrop-blur-sm flex items-center justify-center z-10"
+        :class="['absolute inset-0 backdrop-blur-sm flex items-center justify-center z-10', isDarkMode ? 'bg-gray-900/90' : 'bg-gray-100/90']"
       >
         <div class="text-center max-w-md">
           <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
-          <h3 class="text-xl font-semibold text-white mb-2">加载失败</h3>
-          <p class="text-gray-400 mb-4">{{ error }}</p>
+          <h3 :class="['text-xl font-semibold mb-2', isDarkMode ? 'text-white' : 'text-gray-900']">加载失败</h3>
+          <p :class="['mb-4', isDarkMode ? 'text-gray-400' : 'text-gray-600']">{{ error }}</p>
           <button
             @click="retryLoad"
             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -76,9 +86,9 @@
         v-if="!isLoading && !error"
         class="absolute bottom-4 left-4 right-4 z-20"
       >
-        <div class="bg-gray-900/90 backdrop-blur-sm border border-gray-700/50 rounded-lg px-4 py-2">
+        <div :class="['backdrop-blur-sm border rounded-lg px-4 py-2', isDarkMode ? 'bg-gray-900/90 border-gray-700/50' : 'bg-white/90 border-gray-300/50']">
           <div class="flex items-center justify-between text-sm">
-            <div class="flex items-center space-x-4 text-gray-300">
+            <div :class="['flex items-center space-x-4', isDarkMode ? 'text-gray-300' : 'text-gray-700']">
               <span>视图: {{ viewModeText }}</span>
               <span>工具: {{ currentToolText }}</span>
               <span v-if="modelInfo.vertices">顶点: {{ modelInfo.vertices.toLocaleString() }}</span>
@@ -91,7 +101,9 @@
                   'p-2 rounded-lg transition-colors',
                   showControlPanel 
                     ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                    : isDarkMode 
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900'
                 ]"
                 title="控制面板"
               >
@@ -101,7 +113,12 @@
               </button>
               <button
                 @click="handleFullscreen"
-                class="p-2 bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white rounded-lg transition-colors"
+                :class="[
+                  'p-2 rounded-lg transition-colors',
+                  isDarkMode 
+                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900'
+                ]"
                 title="全屏"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,36 +135,36 @@
         v-if="showShortcuts"
         class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30"
       >
-        <div class="bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-lg p-6 max-w-md">
-          <h3 class="text-lg font-semibold text-white mb-4">快捷键</h3>
+        <div :class="['backdrop-blur-sm border rounded-lg p-6 max-w-md', isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-gray-300/50']">
+          <h3 :class="['text-lg font-semibold mb-4', isDarkMode ? 'text-white' : 'text-gray-900']">快捷键</h3>
           <div class="space-y-2 text-sm">
             <div class="flex justify-between">
-              <span class="text-gray-400">旋转视图</span>
-              <span class="text-white">鼠标左键拖拽</span>
+              <span :class="[isDarkMode ? 'text-gray-400' : 'text-gray-600']">旋转视图</span>
+              <span :class="[isDarkMode ? 'text-white' : 'text-gray-900']">鼠标左键拖拽</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400">平移视图</span>
-              <span class="text-white">鼠标中键拖拽</span>
+              <span :class="[isDarkMode ? 'text-gray-400' : 'text-gray-600']">平移视图</span>
+              <span :class="[isDarkMode ? 'text-white' : 'text-gray-900']">鼠标中键拖拽</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400">缩放</span>
-              <span class="text-white">鼠标滚轮</span>
+              <span :class="[isDarkMode ? 'text-gray-400' : 'text-gray-600']">缩放</span>
+              <span :class="[isDarkMode ? 'text-white' : 'text-gray-900']">鼠标滚轮</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400">重置视图</span>
-              <span class="text-white">R</span>
+              <span :class="[isDarkMode ? 'text-gray-400' : 'text-gray-600']">重置视图</span>
+              <span :class="[isDarkMode ? 'text-white' : 'text-gray-900']">R</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400">适应屏幕</span>
-              <span class="text-white">F</span>
+              <span :class="[isDarkMode ? 'text-gray-400' : 'text-gray-600']">适应屏幕</span>
+              <span :class="[isDarkMode ? 'text-white' : 'text-gray-900']">F</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400">切换网格</span>
-              <span class="text-white">G</span>
+              <span :class="[isDarkMode ? 'text-gray-400' : 'text-gray-600']">切换网格</span>
+              <span :class="[isDarkMode ? 'text-white' : 'text-gray-900']">G</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400">切换线框</span>
-              <span class="text-white">W</span>
+              <span :class="[isDarkMode ? 'text-gray-400' : 'text-gray-600']">切换线框</span>
+              <span :class="[isDarkMode ? 'text-white' : 'text-gray-900']">W</span>
             </div>
           </div>
           <button
@@ -163,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import Babylon3DViewer from './Babylon3DViewer.vue'
 import ViewerToolbar from './ViewerToolbar.vue'
 import ViewerControlPanel from './ViewerControlPanel.vue'
@@ -172,11 +189,19 @@ import ViewerControlPanel from './ViewerControlPanel.vue'
 interface Props {
   modelUrl?: string
   autoLoad?: boolean
+  showWireframe?: boolean
+  showGrid?: boolean
+  showAxes?: boolean
+  viewMode?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelUrl: '',
-  autoLoad: true
+  autoLoad: true,
+  showWireframe: false,
+  showGrid: true,
+  showAxes: true,
+  viewMode: 'perspective'
 })
 
 // Emits
@@ -200,9 +225,9 @@ const currentView = ref('perspective')
 const currentTool = ref('rotate')
 
 const displayOptions = reactive({
-  wireframe: false,
-  grid: true,
-  axes: true
+  wireframe: props.showWireframe,
+  grid: props.showGrid,
+  axes: props.showAxes
 })
 
 const modelInfo = reactive({
@@ -212,7 +237,32 @@ const modelInfo = reactive({
   name: ''
 })
 
+// Watch props changes
+watch(() => props.showWireframe, (newValue) => {
+  displayOptions.wireframe = newValue
+})
+
+watch(() => props.showGrid, (newValue) => {
+  displayOptions.grid = newValue
+})
+
+watch(() => props.showAxes, (newValue) => {
+  displayOptions.axes = newValue
+})
+
+watch(() => props.viewMode, (newValue) => {
+  currentView.value = newValue
+})
+
 // Computed
+const isDarkMode = computed(() => {
+  return document.documentElement.classList.contains('dark')
+})
+
+const viewerBackgroundClass = computed(() => {
+  return isDarkMode.value ? 'bg-gray-900' : 'bg-gray-100'
+})
+
 const viewModeText = computed(() => {
   const viewModes: Record<string, string> = {
     perspective: '透视',
@@ -423,7 +473,15 @@ defineExpose({
 
 /* 全屏样式 */
 .modular-viewer:fullscreen {
+  background: var(--viewer-bg-color, #111827);
+}
+
+.modular-viewer:fullscreen.bg-gray-900 {
   background: #111827;
+}
+
+.modular-viewer:fullscreen.bg-gray-100 {
+  background: #f3f4f6;
 }
 
 .modular-viewer:fullscreen .viewer-container {
