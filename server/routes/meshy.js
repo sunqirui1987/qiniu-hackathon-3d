@@ -359,7 +359,11 @@ router.get('/tasks/all', async (req, res, next) => {
     }
     
     // 按创建时间排序（最新的在前）
-    allTasks.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    allTasks.sort((a, b) => {
+      const timeA = new Date(a.created_at || 0).getTime()
+      const timeB = new Date(b.created_at || 0).getTime()
+      return timeB - timeA
+    })
     
     // 限制返回数量
     const limitedTasks = allTasks.slice(0, parseInt(page_size))

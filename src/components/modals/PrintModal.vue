@@ -53,8 +53,8 @@
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">模型信息</h4>
           <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
             <div>文件名: {{ modelInfo.name || '未知' }}</div>
-            <div v-if="modelInfo.faces">面数: {{ modelInfo.faces.toLocaleString() }}</div>
-            <div v-if="modelInfo.vertices">顶点数: {{ modelInfo.vertices.toLocaleString() }}</div>
+            <div v-if="modelInfo.faces">面数: {{ (modelInfo.faces || 0).toLocaleString() }}</div>
+            <div v-if="modelInfo.vertices">顶点数: {{ (modelInfo.vertices || 0).toLocaleString() }}</div>
             <div v-if="modelInfo.fileSize">文件大小: {{ modelInfo.fileSize }}</div>
           </div>
         </div>

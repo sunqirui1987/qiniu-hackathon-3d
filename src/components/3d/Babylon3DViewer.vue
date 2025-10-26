@@ -20,10 +20,10 @@
     <!-- 模型信息 -->
     <div v-if="modelInfo && !isLoading && !loadError" class="model-info">
       <div class="info-item">
-        <span>顶点: {{ modelInfo.vertices.toLocaleString() }}</span>
+        <span>顶点: {{ (modelInfo.vertices || 0).toLocaleString() }}</span>
       </div>
       <div class="info-item">
-        <span>面: {{ modelInfo.faces.toLocaleString() }}</span>
+        <span>面: {{ (modelInfo.faces || 0).toLocaleString() }}</span>
       </div>
       <div class="info-item">
         <span>材质: {{ modelInfo.materials }}</span>

@@ -49,8 +49,8 @@
             <div :class="['flex items-center space-x-4', isDarkMode ? 'text-gray-300' : 'text-gray-700']">
               <span>视图: {{ viewModeText }}</span>
               <span>工具: {{ currentToolText }}</span>
-              <span v-if="babylonViewer?.modelInfo?.vertices">顶点: {{ babylonViewer.modelInfo.vertices.toLocaleString() }}</span>
-              <span v-if="babylonViewer?.modelInfo?.faces">面: {{ babylonViewer.modelInfo.faces.toLocaleString() }}</span>
+              <span v-if="babylonViewer?.modelInfo?.vertices">顶点: {{ (babylonViewer.modelInfo.vertices || 0).toLocaleString() }}</span>
+              <span v-if="babylonViewer?.modelInfo?.faces">面: {{ (babylonViewer.modelInfo.faces || 0).toLocaleString() }}</span>
             </div>
             <div class="flex items-center space-x-2">
               <button

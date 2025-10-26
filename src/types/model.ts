@@ -1,159 +1,154 @@
+import type { 
+  ModelFormat, 
+  TaskStatus, 
+  GenerationStatus, 
+  AIModel, 
+  TopologyType, 
+  ArtStyle, 
+  QualityLevel 
+} from '@/constants'
+
+// 基础3D模型接口
 export interface Model3D {
   id: string
   name: string
   url: string
-  format: '3mf' | 'stl' | 'obj' | 'glb' | 'gltf'
+  format: ModelFormat
   createdAt: Date
   updatedAt: Date
   thumbnail?: string
   size?: number
-  metadata?: {
-    vertices: number
-    faces: number
-    materials: number
+  metadata?: ModelMetadata
+}
+
+// 模型元数据
+export interface ModelMetadata {
+  vertices: number
+  faces: number
+  materials: number
+  boundingBox?: {
+    min: { x: number; y: number; z: number }
+    max: { x: number; y: number; z: number }
+    size: { x: number; y: number; z: number }
+    center: { x: number; y: number; z: number }
   }
 }
 
+// 生成任务接口
 export interface GenerateTask {
   id: string
-  type: 'text-to-3d' | 'image-to-3d'
-  status: 'pending' | 'preview' | 'refine' | 'completed' | 'failed'
+  type: 'text-to-3d' | 'image-to-3d' | 'retopology' | 'texture'
+  status: GenerationStatus
   progress: number
   prompt?: string
   imageUrl?: string
   result?: Model3D
   error?: string
   createdAt: Date
+  updatedAt?: Date
 }
 
-export interface GenerateOptions {
-  artStyle?: string
-  targetPolycount?: number
-  enablePBR?: boolean
-  seed?: number
-}
-
-export interface ModelFile {
-  id: string
-  name: string
-  path: string
-  format: '3mf' | 'stl' | 'obj' | 'glb' | 'gltf'
-  size: number
-  createdAt: Date
-  updatedAt: Date
-  thumbnail?: string
-  tags: string[]
-  category?: string
-  metadata?: {
-    vertices?: number
-    faces?: number
-    materials?: number
-  }
-}
-
-export interface ModelIndex {
-  files: ModelFile[]
-  categories: string[]
-  tags: string[]
-  lastUpdated: Date
-}
-
-// Meshy API 任务对象类型定义
+// Meshy任务项接口
 export interface MeshyTaskItem {
   id: string
-  model_urls: {
-    glb?: string
-    fbx?: string
-    obj?: string
-    mtl?: string
-    usdz?: string
-  }
+  model_urls: ModelUrls
   thumbnail_url?: string
   prompt?: string
-  art_style?: string
+  art_style?: ArtStyle
   progress: number
   started_at?: number
   created_at: number
   finished_at?: number
-  status: 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED'
-  texture_urls?: Array<{
-    base_color?: string
-  }>
+  status: TaskStatus
+  texture_urls?: TextureUrls[]
   preceding_tasks?: number
-  task_error?: {
-    message?: string
-  }
+  task_error?: TaskError
 }
 
-// 统一的选中项类型，兼容 Meshy API 和本地导入的模型
-export interface SelectedItem {
-  // Meshy API 任务对象属性
-  id?: string
-  model_urls?: {
-    glb?: string
-    fbx?: string
-    obj?: string
-    mtl?: string
-    usdz?: string
-  }
-  thumbnail_url?: string
-  prompt?: string
-  art_style?: string
-  progress?: number
-  started_at?: number
-  created_at?: number
-  finished_at?: number
-  status?: 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED'
-  texture_urls?: Array<{
-    base_color?: string
-  }>
-  preceding_tasks?: number
-  task_error?: {
-    message?: string
-  }
-  
-  // 本地导入模型属性（兼容性）
+// 模型URL集合
+export interface ModelUrls {
+  glb?: string
+  fbx?: string
+  obj?: string
+  mtl?: string
+  usdz?: string
+}
+
+// 纹理URL集合
+export interface TextureUrls {
+  base_color?: string
+  normal?: string
+  roughness?: string
+  metallic?: string
+}
+
+// 任务错误信息
+export interface TaskError {
+  message?: string
+  code?: string
+  details?: Record<string, unknown>
+}
+
+// 选中项接口（统一历史项目和任务项）
+export interface SelectedItem extends Partial<MeshyTaskItem> {
   url?: string
   name?: string
   type?: string
 }
 
-// 重拓扑选项类型（统一组件和API使用）
+// 文本生成3D选项
+export interface TextTo3DOptions {
+  prompt: string
+  negative_prompt?: string
+  art_style?: ArtStyle
+  ai_model?: AIModel
+  topology?: TopologyType
+  target_polycount?: number
+  should_remesh?: boolean
+  symmetry_mode?: 'off' | 'auto' | 'on'
+  is_a_t_pose?: boolean
+  seed?: number
+  enable_pbr?: boolean
+  texture_prompt?: string
+}
+
+// 图片生成3D选项
+export interface ImageTo3DOptions {
+  image: File | string
+  ai_model?: AIModel
+  topology?: TopologyType
+  target_polycount?: number
+  symmetry_mode?: 'off' | 'auto' | 'on'
+  should_remesh?: boolean
+  should_texture?: boolean
+  enable_pbr?: boolean
+  is_a_t_pose?: boolean
+  texture_prompt?: string
+}
+
+// 重拓扑选项
 export interface RetopologyOptions {
-  // 组件相关字段
+  // UI层面的选项
   input_source: 'existing_task' | 'upload_model'
   task_id: string
   model_url: string
-  topology: 'triangle' | 'quad'
+  topology: TopologyType
   target_polycount: number
-  quality: 'low' | 'medium' | 'high'
+  quality: QualityLevel
   preserve_boundaries: boolean
   preserve_uv: boolean
   
-  // API 相关字段（可选）
-  input_task_id?: string  // 需要重建网格的已完成任务ID（API使用）
-  target_formats?: Array<'glb' | 'fbx' | 'obj' | 'usdz' | 'blend' | 'stl'>  // 目标格式
-  resize_height?: number          // 缩放高度（米）
-  origin_at?: 'bottom' | 'center' // 原点位置
-  convert_format_only?: boolean   // 是否仅转换格式
+  // API层面的选项
+  input_task_id?: string
+  target_formats?: ModelFormat[]
+  resize_height?: number
+  origin_at?: 'bottom' | 'center'
+  convert_format_only?: boolean
 }
 
-// 贴图生成 API 相关类型定义
-export interface RetextureOptions {
-  // 必需属性（二选一）
-  input_task_id?: string  // 需要重新贴图的已完成任务ID
-  model_url?: string      // 3D模型的公开访问URL
-
-  // 可选属性
-  text_style_prompt?: string    // 文本风格提示
-  image_style_url?: string      // 图像风格URL
-  ai_model?: string            // AI模型版本
-  enable_original_uv?: boolean // 启用原始UV
-  enable_pbr?: boolean         // 启用PBR材质
-}
-
-// 贴图组件选项类型
+// 纹理生成选项
 export interface TextureOptions {
+  // UI层面的选项
   input_source: 'existing_task' | 'upload_model'
   task_id: string
   model_url: string
@@ -163,11 +158,68 @@ export interface TextureOptions {
   image_description: string
   texture_type: 'diffuse' | 'normal' | 'roughness' | 'metallic'
   resolution: '512' | '1024' | '2048'
-  quality: 'standard' | 'high'
+  quality: QualityLevel
   seamless: boolean
   preserve_uv: boolean
   generate_normal: boolean
-  ai_model?: string
+  
+  // API层面的选项
+  ai_model?: AIModel
   enable_original_uv?: boolean
   enable_pbr?: boolean
+}
+
+// 重新纹理选项（API专用）
+export interface RetextureOptions {
+  input_task_id?: string
+  model_url?: string
+  text_style_prompt?: string
+  image_style_url?: string
+  ai_model?: AIModel
+  enable_original_uv?: boolean
+  enable_pbr?: boolean
+}
+
+// 模型文件接口
+export interface ModelFile {
+  id: string
+  name: string
+  path: string
+  format: ModelFormat
+  size: number
+  createdAt: Date
+  updatedAt: Date
+  thumbnail?: string
+  tags: string[]
+  category?: string
+  metadata?: ModelMetadata
+}
+
+// 模型索引接口
+export interface ModelIndex {
+  files: ModelFile[]
+  categories: string[]
+  tags: string[]
+  lastUpdated: Date
+}
+
+// 工作室状态接口
+export interface StudioState {
+  activeTab: string
+  activeMainMenu: string
+  historyCategory: string
+  selectedItem: SelectedItem | null
+  isPageLoading: boolean
+  isGenerating: boolean
+  isProcessing: boolean
+  generationProgress: number
+  generationStatus: GenerationStatus
+}
+
+// 生成选项集合
+export interface GenerationOptions {
+  textOptions: Partial<TextTo3DOptions>
+  imageOptions: Partial<ImageTo3DOptions>
+  retopologyOptions: Partial<RetopologyOptions>
+  textureOptions: Partial<TextureOptions>
 }
