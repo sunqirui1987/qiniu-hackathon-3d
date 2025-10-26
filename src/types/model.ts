@@ -117,3 +117,64 @@ export interface SelectedItem {
   name?: string
   type?: string
 }
+
+// 重拓扑 API 相关类型定义
+export interface RemeshOptions {
+  // 必需属性（二选一）
+  input_task_id?: string  // 需要重建网格的已完成任务ID
+  model_url?: string      // 3D模型的公开访问URL
+
+  // 可选属性
+  target_formats?: Array<'glb' | 'fbx' | 'obj' | 'usdz' | 'blend' | 'stl'>  // 目标格式
+  topology?: 'quad' | 'triangle'  // 拓扑结构
+  target_polycount?: number       // 目标面数 (100-300000)
+  resize_height?: number          // 缩放高度（米）
+  origin_at?: 'bottom' | 'center' // 原点位置
+  convert_format_only?: boolean   // 是否仅转换格式
+}
+
+// 重拓扑组件选项类型
+export interface RetopologyOptions {
+  input_source: 'existing_task' | 'upload_model'
+  task_id: string
+  model_url: string
+  topology: 'triangle' | 'quad'
+  target_polycount: number
+  quality: 'low' | 'medium' | 'high'
+  preserve_boundaries: boolean
+  preserve_uv: boolean
+  resize_height?: number
+  origin_at?: 'bottom' | 'center'
+  convert_format_only?: boolean
+}
+
+// 贴图生成 API 相关类型定义
+export interface RetextureOptions {
+  // 必需属性（二选一）
+  input_task_id?: string  // 需要重新贴图的已完成任务ID
+  model_url?: string      // 3D模型的公开访问URL
+
+  // 可选属性
+  text_style_prompt?: string    // 文本风格提示
+  image_style_url?: string      // 图像风格URL
+  ai_model?: string            // AI模型版本
+  enable_original_uv?: boolean // 启用原始UV
+  enable_pbr?: boolean         // 启用PBR材质
+}
+
+// 贴图组件选项类型
+export interface TextureOptions {
+  input_source: 'existing_task' | 'upload_model'
+  task_id: string
+  model_url: string
+  texture_prompt: string
+  texture_type: 'diffuse' | 'normal' | 'roughness' | 'metallic'
+  resolution: '512' | '1024' | '2048'
+  quality: 'standard' | 'high'
+  seamless: boolean
+  preserve_uv: boolean
+  generate_normal: boolean
+  ai_model?: string
+  enable_original_uv?: boolean
+  enable_pbr?: boolean
+}

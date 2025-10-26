@@ -87,7 +87,7 @@
           :available-tasks="availableTasks"
           :selected-item="selectedItem"
           @update:retopology-options="$emit('update:retopologyOptions', $event)"
-          @start-retopology="$emit('start-retopology')"
+          @start-retopology="$emit('start-retopology', $event)"
           @processing-completed="$emit('processing-completed')"
         />
 

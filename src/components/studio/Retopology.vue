@@ -180,7 +180,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import type { SelectedItem } from '@/types/model'
+import type { SelectedItem, RetopologyOptions } from '@/types/model'
 
 // Props
 interface Task {
@@ -190,16 +190,7 @@ interface Task {
 }
 
 interface Props {
-  retopologyOptions?: {
-    input_source: string
-    task_id: string
-    model_url: string
-    topology: string
-    target_polycount: number
-    quality: string
-    preserve_boundaries: boolean
-    preserve_uv: boolean
-  }
+  retopologyOptions?: RetopologyOptions
   availableTasks?: Task[]
   isProcessing?: boolean
   selectedItem?: SelectedItem
@@ -223,13 +214,13 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Emits
 const emit = defineEmits<{
-  'update:retopologyOptions': [value: any]
-  'start-retopology': []
+  'update:retopologyOptions': [value: RetopologyOptions]
+  'start-retopology': [options: RetopologyOptions]
   'processing-completed': []
 }>()
 
 // Local state
-const retopologyOptions = reactive({ ...props.retopologyOptions })
+const retopologyOptions = reactive<RetopologyOptions>({ ...props.retopologyOptions })
 const showAdvancedOptions = ref(false)
 
 // Computed
@@ -250,8 +241,14 @@ const isFormValid = computed(() => {
 
 // Methods
 const handleSubmit = () => {
+  // 如果有选中的模型，使用选中模型的ID作为input_task_id
+  if (props.selectedItem?.id) {
+    retopologyOptions.task_id = props.selectedItem.id
+    retopologyOptions.input_source = 'existing_task'
+  }
+  
   emit('update:retopologyOptions', retopologyOptions)
-  emit('start-retopology')
+  emit('start-retopology', retopologyOptions)
 }
 
 // Watch for prop changes
