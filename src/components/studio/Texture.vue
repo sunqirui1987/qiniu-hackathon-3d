@@ -71,13 +71,13 @@
             <label class="relative">
               <input
                 type="radio"
-                value="image_reference"
+                value="reference_image"
                 v-model="textureOptions.texture_input_type"
                 class="sr-only"
               />
               <div :class="[
                 'p-3 border-2 rounded-lg cursor-pointer transition-all duration-300 text-center',
-                textureOptions.texture_input_type === 'image_reference'
+                textureOptions.texture_input_type === 'reference_image'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500'
               ]">
@@ -112,7 +112,7 @@
         </div>
 
         <!-- 参考图片上传 - 图片参考模式 -->
-        <div v-if="textureOptions.texture_input_type === 'image_reference'" class="form-group">
+        <div v-if="textureOptions.texture_input_type === 'reference_image'" class="form-group">
           <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <span class="flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,6 +311,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import type { TextureOptions } from '@/types/model'
 
 // Props
 interface Task {
@@ -320,21 +321,7 @@ interface Task {
 }
 
 interface Props {
-  textureOptions?: {
-    input_source: string
-    task_id: string
-    model_url: string
-    texture_input_type: string
-    texture_prompt: string
-    reference_image: string
-    image_description: string
-    texture_type: string
-    resolution: string
-    quality: string
-    seamless: boolean
-    preserve_uv: boolean
-    generate_normal: boolean
-  }
+  textureOptions?: TextureOptions
   availableTasks?: Task[]
   isProcessing?: boolean
   selectedItem?: any
@@ -342,16 +329,16 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   textureOptions: () => ({
-    input_source: 'existing_task',
+    input_source: 'existing_task' as const,
     task_id: '',
     model_url: '',
-    texture_input_type: 'text_prompt',
+    texture_input_type: 'text_prompt' as const,
     texture_prompt: '',
     reference_image: '',
     image_description: '',
-    texture_type: 'diffuse',
-    resolution: '1024',
-    quality: 'standard',
+    texture_type: 'diffuse' as const,
+    resolution: '1024' as const,
+    quality: 'standard' as const,
     seamless: false,
     preserve_uv: true,
     generate_normal: false
@@ -363,8 +350,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Emits
 const emit = defineEmits<{
-  'update:textureOptions': [value: any]
-  'generate-texture': []
+  'update:textureOptions': [value: TextureOptions]
+  'generate-texture': [prompt: string, options: TextureOptions]
   'generation-completed': []
 }>()
 
@@ -379,7 +366,7 @@ const isFormValid = computed(() => {
   if (props.selectedItem) {
     if (textureOptions.texture_input_type === 'text_prompt') {
       return textureOptions.texture_prompt.trim() !== ''
-    } else if (textureOptions.texture_input_type === 'image_reference') {
+    } else if (textureOptions.texture_input_type === 'reference_image') {
       return textureOptions.reference_image !== ''
     }
   }
@@ -432,8 +419,14 @@ const removeImage = () => {
 }
 
 const handleSubmit = () => {
+  // 如果有选中的模型，设置 task_id
+  if (props.selectedItem) {
+    textureOptions.task_id = props.selectedItem.id
+    textureOptions.input_source = 'existing_task'
+  }
+  
   emit('update:textureOptions', textureOptions)
-  emit('generate-texture')
+  emit('generate-texture', textureOptions.texture_prompt, textureOptions)
 }
 
 // Watch for prop changes
