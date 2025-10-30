@@ -17,8 +17,8 @@ export const useAuthStore = defineStore('auth', () => {
     const urlParams = new URLSearchParams(window.location.search)
     const redirect = urlParams.get('redirect')
     
-    // 构建OAuth URL，包含redirect参数
-    let oauthUrl = `${apiBaseUrl}/auth/${provider}`
+    // 构建OAuth URL，包含redirect参数（后端挂载在 /api/auth）
+    let oauthUrl = `${apiBaseUrl}/api/auth/${provider}`
     if (redirect) {
       oauthUrl += `?redirect=${encodeURIComponent(redirect)}`
     }

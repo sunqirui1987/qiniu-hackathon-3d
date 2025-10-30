@@ -81,4 +81,10 @@ const handleLogin = (provider: OAuthProvider) => {
   loading.value = true
   authStore.loginWithOAuth(provider)
 }
+
+// Mock 登录功能（开发环境）
+const handleMockLogin = (provider: OAuthProvider) => {
+  loading.value = true
+  authStore.loginWithMockOAuth(provider)
+}
 </script>

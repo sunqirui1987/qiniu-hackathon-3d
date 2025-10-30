@@ -23,6 +23,7 @@ import { config } from './server/config/env.js'
 import { authRouter } from './server/routes/auth.js'
 import { meshyRouter } from './server/routes/meshy.js'
 import { securityMiddleware } from './server/middleware/security.js'
+import { errorHandler } from './server/middleware/errorHandler.js'
 
 const app = express()
 const PORT = config.port
@@ -64,6 +65,8 @@ app.get('/health', (req, res) => {
 
 // 挂载认证路由
 app.use('/api/auth', authRouter)
+// 兼容旧路径: 直接在根挂载 /auth 以避免前端误用导致 404
+app.use('/auth', authRouter)
 
 // 挂载 Meshy API 代理路由
 console.log('[Server] 注册 Meshy API 代理路由到 /api/meshy')
@@ -72,20 +75,6 @@ app.use('/api/meshy', (req, res, next) => {
   console.log('[Server] 请求路径:', req.path)
   next()
 }, meshyRouter)
-
-      error: 'Unsupported OAuth provider'
-    })
-  }
-  
-  // 构建重定向URL，包含redirect参数
-  let redirectUrl = `/api/auth/${provider}/mock`
-  if (redirect) {
-    redirectUrl += `?redirect=${encodeURIComponent(redirect)}`
-  }
-  
-  // 重定向到mock端点
-  res.redirect(redirectUrl)
-})
 
 // 处理 404 错误
 app.use((req, res, next) => {
