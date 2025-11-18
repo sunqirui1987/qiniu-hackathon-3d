@@ -122,9 +122,6 @@
 
     <!-- 设置弹窗 -->
     <SettingsModal v-if="showSettingsModal" @close="showSettingsModal = false" />
-    
-    <!-- 模型库弹窗 -->
-    <LibraryModal v-if="showLibraryModal" @close="showLibraryModal = false" />
   </div>
 </template>
 
@@ -137,7 +134,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import GlobalSearch from '@/components/global/GlobalSearch.vue'
 import SettingsModal from '@/components/modals/SettingsModal.vue'
-import LibraryModal from '@/components/modals/LibraryModal.vue'
 
 const uiStore = useUIStore()
 const modelStore = useModelStore()
@@ -147,7 +143,6 @@ const router = useRouter()
 
 // 弹窗控制
 const showSettingsModal = ref(false)
-const showLibraryModal = ref(false)
 
 useKeyboardShortcuts()
 
@@ -166,7 +161,7 @@ const showSettings = () => {
 }
 
 const showLibrary = () => {
-  showLibraryModal.value = true
+  router.push('/library')
 }
 
 
