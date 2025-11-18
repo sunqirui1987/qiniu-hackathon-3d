@@ -27,6 +27,12 @@ const router = createRouter({
       name: 'studio',
       component: () => import('../views/Studio.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/library',
+      name: 'library',
+      component: () => import('../views/Library.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
